@@ -73,14 +73,23 @@ mkdir -p $MYTHARCHIVETMP/work
 date "+%F %T myburn[$$] Executing mythburn"
 python $MYTHARCHIVEDIR/scripts/mythburn.py -j $MYTHARCHIVETMP/config/mydata.xml -l $MYTHARCHIVETMP/logs/progress.log || exit $?
 
+# Get options from mydata.xml
+eval `grep '<options' $MYTHARCHIVETMP/config/mydata.xml | sed -e 's|.*<options ||' -e 's| />||'`
+
 if [ "$RUNTWEAKDVDXML" = true ]
 then
+    date "+%F %T myburn[$$] Executing tweakdvdxml.py"
     infile=$MYTHARCHIVETMP/work/dvdauthor.xml
     [ -f $MYTHARCHIVETMP/work/dvdauthor_orig.xml ] && infile=$MYTHARCHIVETMP/work/dvdauthor_orig.xml
-    tweakdvdxml.py -t $MYTHARCHIVETMP -i $infile || exit $?
-    [ ! -f $MYTHARCHIVETMP/work/dvdauthor_orig.xml ] && \
-        mv $MYTHARCHIVETMP/work/dvdauthor.xml $MYTHARCHIVETMP/work/dvdauthor_orig.xml
-    mv -f $MYTHARCHIVETMP/work/new-dvdauthor.xml $MYTHARCHIVETMP/work/dvdauthor.xml
+    # tweakdvdxml.py can't handle every dvdauthor.xml that mythburn.py creates
+    # If it succeeds, save the old and move the new into its place
+    # If it fails, don't do anything
+    tweakdvdxml.py -t $MYTHARCHIVETMP -i $infile && \
+    (
+        [ ! -f $MYTHARCHIVETMP/work/dvdauthor_orig.xml ] && \
+            mv $MYTHARCHIVETMP/work/dvdauthor.xml $MYTHARCHIVETMP/work/dvdauthor_orig.xml
+        mv -f $MYTHARCHIVETMP/work/new-dvdauthor.xml $MYTHARCHIVETMP/work/dvdauthor.xml
+    )
 fi
 
 # Post process each file that mythburn has prepped for DVD burning
@@ -109,8 +118,12 @@ do
     # Note: LD_LIBRARY_PATH is set in case you have installed a
     # patched libzvbi library with the same prefix as
     # cc2subtitles.
+    # We will try a second time with a skip count, in case there's
+    # an "End of Caption" sequence at the beginning throwing things off.
     LD_LIBRARY_PATH=@libdir@ \
         cc2subtitles -i $recording -p $dir/subs/ -x $dir/spumux.xml || \
+    LD_LIBRARY_PATH=@libdir@ \
+        cc2subtitles -s 10 -i $recording -p $dir/subs/ -x $dir/spumux.xml || \
         continue
 
     # A little test allowing this script to be reentrant.
@@ -143,7 +156,10 @@ dvdauthor -x $MYTHARCHIVETMP/work/dvdauthor.xml || exit $?
 date "+%F %T myburn[$$] Executing mkisofs"
 mkisofs -dvd-video -V 'Test' -o $MYTHARCHIVETMP/work/mythburn.iso $MYTHARCHIVETMP/work/dvd || exit $?
 
-date "+%F %T myburn[$$] Executing growisofs"
-growisofs -dvd-compat -Z $DEVDVD=$MYTHARCHIVETMP/work/mythburn.iso || exit $?
+growopts=""
+[ "$mediatype" = 2 -a "$erasedvdrw" != 0 ] && growopts="-use-the-force-luke"
+
+date "+%F %T myburn[$$] Executing growisofs $growopts"
+growisofs -dvd-compat $growopts -Z $DEVDVD=$MYTHARCHIVETMP/work/mythburn.iso || exit $?
 
 date "+%F %T myburn[$$] Success!"

@@ -23,6 +23,8 @@ extern int pageno;  // Desired caption/teletext page
 extern int width;   // Frame width
 extern int height;  // Frame height
 
+extern int skipVBI;
+
 typedef union
 {
     unsigned long       words[2];
@@ -34,14 +36,16 @@ VBIDecoder::VBIDecoder()
 {
     char* errstr = 0;
     firstTimestamp.base = 0;
-    prevTimestamp.base = 0;
     currTimestamp.base = 0;
     decoder = vbi_decoder_new();
+    decoderTimestamp = 0.0;
     exporter = vbi_export_new("png", &errstr);
     if (!decoder || !exporter)
     {
+        fflush(fplog);
         fprintf(stderr, "Cannot initialize libzvbi: %s\n",
            errstr);
+        fflush(stderr);
         exit(1);
     } 
     vbi_event_handler_add(decoder, -1, eventHandler, this);
@@ -57,6 +61,8 @@ VBIDecoder::VBIDecoder()
     fprintf(fpxml, "<subpictures>\n<stream>\n");
 
     checkPageSize = 1;
+
+    memset(&lastPage, 0, sizeof(lastPage));
 }
 
 VBIDecoder::~VBIDecoder()
@@ -79,12 +85,14 @@ VBIDecoder::~VBIDecoder()
         // Unlink the xml file, print an error message
         // and exit with non-zero exit code
         unlink(xmlfile);
+        fflush(fplog);
         fprintf(stderr, "No CC or Teletext data found\n");
+        fflush(stderr);
         exit(1);
     }
 }
 
-int
+void
 VBIDecoder::decode(PES_packet& pes)
 {
     unsigned char* buf = pes.PES_packet_data;
@@ -109,7 +117,7 @@ VBIDecoder::decode(PES_packet& pes)
         mask.words[1] = 0xf;
     }
     else
-        return 0;
+        return;
 
     if (pes.PTS_DTS_flags)
     {
@@ -122,7 +130,7 @@ VBIDecoder::decode(PES_packet& pes)
     }
 
     if (verbose > 1)
-        fprintf(fplog, "VBI: PTS=%.3f len=%d mask=%#llx\n",
+        fprintf(fplog, "VBI: PTS=%.4f len=%d mask=%#llx\n",
             (double)currTimestamp, len, mask.llword);
 
 
@@ -199,17 +207,16 @@ VBIDecoder::decode(PES_packet& pes)
         {
             fprintf(fplog, "   ivtv-type=%#x line=%d zvbi-id=%#x", type, sliced->line, sliced->id);
             unsigned char* p = ptr+1;
-            if (verbose > 2)
+
+            int n = (type == IVTV_SLICED_TYPE_CC) ? 2 : 42;
+            for (i = 0; i < n; i++, p++)
             {
-                int n = (type == IVTV_SLICED_TYPE_CC) ? 2 : 42;
-                for (i = 0; i < n; i++, p++)
-                {
-                    fprintf(fplog, " %02x", *p);
-                    int c = (*p) & 0x7f;
-                    if (0x20 <= c && c <= 0x7f)
-                        fprintf(fplog, "(%c)", c);
-                }
+                fprintf(fplog, " %02x", *p);
+                int c = (*p) & 0x7f;
+                if (0x20 <= c && c <= 0x7f)
+                    fprintf(fplog, "(%c)", c);
             }
+
             putc('\n', fplog);
         }
     }
@@ -217,8 +224,21 @@ VBIDecoder::decode(PES_packet& pes)
     {
         fprintf(fplog, "Have fewer scanlines than bits in mask!\n");
     }
-    vbi_decode(decoder, sliced_array, sliced - sliced_array,
-        (double)currTimestamp);
+    if (skipVBI > 0)
+    {
+        if (verbose)
+            fprintf(fplog, "Skip\n");
+        skipVBI--;
+        return;
+    }
+    // vbi_decode is very fussy about timestamps
+    // if the difference between the previous time and the current time
+    // is less than 0.025or greater than 0.050, it will blank the page
+    // To keep it happy we give it timestamps that won't cause it
+    // to ignore valid data just because the timestamps provided by
+    // the ivtv driver don't quite match its expectations.
+    decoderTimestamp += 0.03;
+    vbi_decode(decoder, sliced_array, sliced - sliced_array, decoderTimestamp);
 }
 
 
@@ -253,43 +273,33 @@ VBIDecoder::eventHandler(vbi_event* event)
                     break;
             if (checkPageSize)
                 setTeletext(&page);
-            if (checkPage(&page) != 0)
-            {
-                writePage(&page, prevTimestamp);
-            }
-            else
-            {
-                flushPage(currTimestamp);
-            }
-            prevTimestamp = currTimestamp;
-            vbi_unref_page(&page);
+            checkPage(&page);
+            // Looks like this is a noop in version 0.2.x
+            // Might be necessary in 0.3.x
+            // vbi_unref_page(&page);
             break;
         case VBI_EVENT_CAPTION:
             if (event->ev.caption.pgno != pageno)
             {
                 if (verbose)
-                    fprintf(fplog, "vbi_event: type=CAPTION pgno=%d curr=%.3f ignored\n",
+                    fprintf(fplog, "vbi_event: type=CAPTION pgno=%d curr=%.4f ignored\n",
                         event->ev.caption.pgno, (double)currTimestamp);
                 break;
+            }
+            if (verbose)
+            {
+                fprintf(fplog, "vbi_event: type=CAPTION pgno=%d curr=%.4f dirty: y=%d,%d roll=%d\n",
+                    event->ev.caption.pgno, (double)currTimestamp,
+                    page.dirty.y0, page.dirty.y1, page.dirty.roll);
             }
             if (!vbi_fetch_cc_page(decoder, &page, event->ev.caption.pgno, TRUE))
                 break;
             if (checkPageSize)
                 setCaption(&page);
-            if (checkPage(&page) != 0)
-            {
-                if (verbose)
-                    fprintf(fplog, "vbi_event: type=CAPTION pgno=%d curr=%.3f dirty: y=%d,%d roll=%d\n",
-                        event->ev.caption.pgno, (double)currTimestamp,
-                        page.dirty.y0, page.dirty.y1, page.dirty.roll);
-                writePage(&page, prevTimestamp);
-            }
-            else
-            {
-                flushPage(currTimestamp);
-            }
-            prevTimestamp = currTimestamp;
-            vbi_unref_page(&page);
+            checkPage(&page);
+            // Looks like this is a noop in version 0.2.x
+            // Might be necessary in 0.3.x
+            // vbi_unref_page(&page);
             break;
         case VBI_EVENT_NETWORK:
             fprintf(fplog, "vbi_event: type=NETWORK\n");
@@ -312,7 +322,7 @@ VBIDecoder::eventHandler(vbi_event* event)
     }
 }
 
-int
+void
 VBIDecoder::checkPage(vbi_page* pg)
 {
     // Check for blank page,
@@ -346,13 +356,32 @@ VBIDecoder::checkPage(vbi_page* pg)
                 {
                     fg = text->foreground;
                     bg = text->background;
-                    fprintf(fplog, "%dx%d fg=%d bg=%d\n", col, row, fg, bg);
+                    fprintf(fplog, "Color change at %dx%d fg=%d bg=%d\n", col, row, fg, bg);
                 }
             }
         }
     }
 
-    return nonEmpty;
+    if (nonEmpty == 0)
+    {
+        if (verbose)
+            fprintf(fplog, "Blank page\n");
+        flushPage(currTimestamp);
+        return;
+    }
+
+    // If we haven't flushed the last page,
+    // compare it against the current page
+    if (fileName != 0)
+    {
+        if (memcmp(lastPage.text, pg->text, sizeof(lastPage.text)) == 0)
+        {
+            if (verbose)
+                fprintf(fplog, "Identical pages\n");
+            return;
+        }
+    }
+    writePage(pg, currTimestamp);
 }
 
 void
@@ -365,10 +394,15 @@ VBIDecoder::writePage(vbi_page* pg, Timestamp& startTS)
     startTimestamp = startTS;
     if (!vbi_export_file(exporter, fileName, pg))
     {
+        fflush(fplog);
         fprintf(stderr, "vbi_export_file(file=%s) failed: %s\n",
             fileName, vbi_export_errstr(exporter));
+        fflush(stderr);
         exit(1);
     }
+
+    // Copy the page so checkPage can compare it against future pages
+    memcpy(&lastPage, pg, sizeof(lastPage));
 
     fflush(fplog);
     textBytes = vbi_print_page_region(pg, textBuf, textSize, "UTF-8",
@@ -424,11 +458,13 @@ VBIDecoder::flushPage(Timestamp& endTS)
             fprintf(fpxml, "\n--></spu>\n");
             if (ferror(fpxml))
             {
+                fflush(fplog);
                 fprintf(stderr, "Error writing XML file\n");
+                fflush(stderr);
                 exit(1);
             }
         }
-        else
+        else if (verbose)
         {
             fprintf(fplog, "Ignoring file=%s start(%.4f) >= end(%.4f)\n",
                 fileName, (double)startTimestamp, (double)endTS);
@@ -448,6 +484,7 @@ VBIDecoder::writeTimestamp(double timestamp)
     seconds = seconds % 60;
     fprintf(fpxml, "\"%d:%02d:%02d.%04d\"", hours, min, seconds, fraction);
 */
+    // spumux doesn't require h:mm:ss.ff, so why bother?
     fprintf(fpxml, "\"%.4f\"", timestamp);
 }
 

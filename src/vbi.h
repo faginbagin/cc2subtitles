@@ -22,12 +22,12 @@ class VBIDecoder
         VBIDecoder();
         ~VBIDecoder();
 
-        int             decode(PES_packet& pes);
+        void            decode(PES_packet& pes);
 
         static void     eventHandler(vbi_event* event, void* user_data);
         void            eventHandler(vbi_event* event);
 
-        int             checkPage(vbi_page* pg);
+        void            checkPage(vbi_page* pg);
         void            writePage(vbi_page* pg, Timestamp& startTS);
         void            flushPage(Timestamp& endTS);
         void            writeTimestamp(double timestamp);
@@ -35,9 +35,11 @@ class VBIDecoder
         void            setCaption(vbi_page* pg);
 
         Timestamp       firstTimestamp;
-        Timestamp       prevTimestamp;
         Timestamp       currTimestamp;
+
         vbi_decoder*    decoder;
+        double          decoderTimestamp;
+
         vbi_export*     exporter;
         PageRegion      region;
 
@@ -47,6 +49,7 @@ class VBIDecoder
         char*           textBuf;
         int             textSize;
         int             textBytes;
+        vbi_page        lastPage;
 
         int             checkPageSize;
         int             xOffset;

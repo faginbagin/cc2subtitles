@@ -12,7 +12,7 @@
 
 int decode();
 
-static char* shortOpts = "i:l:vp:P:x:w:h:";
+static char* shortOpts = "i:l:vp:P:x:w:h:s:";
 
 static struct option longOpts[] =
 {
@@ -24,6 +24,7 @@ static struct option longOpts[] =
     { "xml",    required_argument,  0,  'x' },
     { "width",  required_argument,  0,  'w' },
     { "height", required_argument,  0,  'h' },
+    { "skip",   required_argument,  0,  's' },
 };
 
 void
@@ -52,6 +53,8 @@ usage(const char* prog)
                     Default: 720\n\
 -h, --height height Frame height\n\
                     Default: 480 for NTSC, 576 for PAL\n\
+-s, --skip count    Skip the first count VBI blocks\n\
+                    Default: 0\n\
 ");
 }
 
@@ -66,6 +69,7 @@ int   pageno = 1;
 // when we get the first vbi page event in vbi.cpp
 int   width = 0;
 int   height = 0;
+int   skipVBI;
 
 int
 main(int argc, char** argv)
@@ -111,6 +115,9 @@ main(int argc, char** argv)
                 break;
             case 'h':
                 height = atoi(optarg);
+                break;
+            case 's':
+                skipVBI = atoi(optarg);
                 break;
             default:
                 usage(argv[0]);
@@ -159,7 +166,7 @@ decode()
             c = pack.decode(fpin);
             if (c == EOF)
                 break;
-            if (verbose > 1)
+            if (verbose > 2)
                 pack.print(fplog);
         }
         else if (c >= program_stream_map)
@@ -169,7 +176,7 @@ decode()
             c = pes.decode(fpin);
             if (c == EOF)
                 break;
-            if (verbose > 1 /* || pes.stream_id == private_stream_1 */ )
+            if (verbose > 2 /* || pes.stream_id == private_stream_1 */ )
                 pes.print(fplog);
 
             if (pes.stream_id == private_stream_1)

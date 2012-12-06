@@ -121,7 +121,7 @@ PS_pack::decode(FILE* fp)
     }
     startPos = ftello(fp)-4;
 
-    if (verbose > 1)
+    if (verbose > 2)
     {
         // According to 13818.1, we need to decode the next 10 bytes
         if (fread(&buf, 10, 1, fp) != 1)
@@ -232,7 +232,7 @@ PS_pack::decode(FILE* fp)
     header_length = buf[0] << 8;
     header_length += buf[1];
 
-    if (verbose > 1)
+    if (verbose > 2)
     {
     /*
         marker_bit  1   bslbf

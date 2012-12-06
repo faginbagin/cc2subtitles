@@ -189,7 +189,8 @@ nextTitle = 2
 newPost = None  # We'll need to tweak the last pgc's post after we loop
 titlesets = inDvdauthor.getElementsByTagName("titleset")
 for titleset in titlesets:
-    pgcs = titleset.getElementsByTagName("pgc")
+    titles = titleset.getElementsByTagName("titles")[0]
+    pgcs = titles.getElementsByTagName("pgc")
     for pgc in pgcs:
         clone = pgc.cloneNode(True)
         outTitles.appendChild(clone)

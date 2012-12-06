@@ -82,7 +82,7 @@ PES_packet::decode(FILE* fp)
     }
     PES_packet_length_pos = ftello(fp);
 
-    if (verbose > 1 || stream_id == private_stream_1)
+    if (verbose > 2 || stream_id == private_stream_1)
     {
         if (stream_id != program_stream_map
             && stream_id != padding_stream

@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT([cc2subtitles], [0.3], [mythtv@hbuus.com])
+AC_INIT([cc2subtitles], [0.4], [mythtv@hbuus.com])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 
 AC_CONFIG_SRCDIR([src/vbi.h])

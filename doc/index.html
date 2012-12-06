@@ -95,15 +95,21 @@ here it is:
 <td>Release</td>
 <td>Date</td>
 <td>Approximate Size</td>
+<td>Reason</td>
 </tr>
 <tr>
 <td>
-<a href="cc2subtitles-0.3.tar.gz">cc2subtitles-0.3.tar.gz
+<a href="cc2subtitles-0.4.tar.gz">cc2subtitles-0.4.tar.gz
 </a></td>
 <td>
-2008-02-27
+2008-03-04
 </td>
-<td>241 Kbytes</td>
+<td>544 Kbytes</td>
+<td>
+Better results for scrolling captions.
+<br>
+Tested with zvbi-0.2.29.
+</td>
 </tr>
 </table>
 <p>
@@ -133,7 +139,11 @@ A patch for libzvbi to render all special characters.
 <dt>
 doc
 <dd>
-A copy of the documentation.
+A copy of this documentation.
+<dt>
+doc/mytheme
+<dd>
+The mytharchive theme I use to burn DVDs.
 </dl>
 
 <hr>
@@ -201,13 +211,13 @@ Recompile and install
 <li>
 Download and unpack cc2subtitles
 <pre>
-# wget http://www.hbuus.com/cc2subtitles/cc2subtitles-0.3.tar.gz
-# tar xf cc2subtitles-0.3.tar.gz
+# wget http://www.hbuus.com/cc2subtitles/cc2subtitles-0.4.tar.gz
+# tar xf cc2subtitles-0.4.tar.gz
 </pre>
 <li>
 Configure cc2subtitles
 <pre>
-# cd cc2subtitles-0.3
+# cd cc2subtitles-0.4
 # ./configure \
     --with-mytharchive-tmp=<i>path-to-mytharchive-temp-dir</i> \
     --with-mytharchive-dir=<i>path-to-mytharchive-install-dir</i> \
@@ -777,6 +787,10 @@ How about the way it's organized?
 Comments on the package.
 <br>
 Can you use the package in its current form?
+<br>
+If not, why not?
+<br>
+Are you using a newer version of mythtv?
 <br>
 It doesn't have a pretty GUI and requires
 some knowledge of mythtv to configure and use effectively.
