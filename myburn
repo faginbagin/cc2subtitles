@@ -42,8 +42,6 @@
 # This does mean you'll use more disk space to create DVDs than you did before.
 # Let me know if that's an issue. I can probably suggest a workaround.
 
-date "+%F %T myburn[$$] begin"
-
 # MYTHARCHIVETMP should be set to the value of your "Myth Archive Temp Directory."
 # You set this MythArchive Settings, page 1, first option.
 MYTHARCHIVETMP=/video/tmp
@@ -51,9 +49,26 @@ MYTHARCHIVETMP=/video/tmp
 # MYTHARCHIVEDIR should be set to the location where mytharchive, and other
 # mythtv plugins, are installed. Typically this is:
 MYTHARCHIVEDIR=/usr/share/mythtv/mytharchive
-# This is where I've installed my version, with a tweaked mythburn.py
-# and my own theme. If I've forgotten to commet it out, please do so.
+# This is where I've installed my version, with a patched mythburn.py
+# and my own theme. If I've forgotten to comment it out, please do so.
 MYTHARCHIVEDIR=$HOME/build/share/mythtv/mytharchive
+
+# The following variable determines whether to run tweakdvdxml.py
+# tweakdvdxml.py does some postprocessing on the dvdauthor.xml script
+# created by mythburn. It puts all the titles into one titleset, and tells
+# a dvd player to play titles one after another,
+# instead of going back to the main menu after playing each title.
+# It also moves the main menu from root menu to the titleset.
+# That's because it's most convenient with my universal remote.
+# I have only tested this script with dvdauthor.xml files created with
+# my own theme, so you probably should set this value to false.
+# FWIW, I think it will work with the Compact theme.
+RUNTWEAKDVDXML=true
+
+# Change the following to the name of your DVD device
+DEVDVD=/dev/dvd1
+
+date "+%F %T myburn[$$] begin"
 
 mkdir -p $MYTHARCHIVETMP/logs
 rm -rf $MYTHARCHIVETMP/work
@@ -62,19 +77,15 @@ mkdir -p $MYTHARCHIVETMP/work
 date "+%F %T myburn[$$] Executing mythburn"
 python $MYTHARCHIVEDIR/scripts/mythburn.py -j $MYTHARCHIVETMP/config/mydata.xml -l $MYTHARCHIVETMP/logs/progress.log || exit $?
 
-# tweakdvdxml.py does some postprocessing on the dvdauthor.xml script
-# created by mythburn. It puts all the titles into one titleset, and tells
-# a dvd player to play titles one after another,
-# instead of going back to the main menu after playing each title.
-# It also moves the main menu from root menu to the titleset.
-# That's because it's most convenient with my universal remote.
-# I have only tested this script with dvdauthor.xml files created with
-# my own theme, so you probably should comment it out.
-# FWIW, I think it will work with the Compact theme.
-tweakdvdxml.py -t $MYTHARCHIVETMP || exit $?
-DVDAUTHORXML=new-dvdauthor.xml
-# If you comment out the above, uncomment the following, too.
-#DVDAUTHORXML=dvdauthor.xml
+if [ "$RUNTWEAKDVDXML" = true ]
+then
+    infile=$MYTHARCHIVETMP/work/dvdauthor.xml
+    [ -f $MYTHARCHIVETMP/work/dvdauthor_orig.xml ] && infile=$MYTHARCHIVETMP/work/dvdauthor_orig.xml
+    tweakdvdxml.py -t $MYTHARCHIVETMP -i $infile || exit $?
+    [ ! -f $MYTHARCHIVETMP/work/dvdauthor_orig.xml ] && \
+        mv $MYTHARCHIVETMP/work/dvdauthor.xml $MYTHARCHIVETMP/work/dvdauthor_orig.xml
+    mv -f $MYTHARCHIVETMP/work/new-dvdauthor.xml $MYTHARCHIVETMP/work/dvdauthor.xml
+fi
 
 # Post process each file that mythburn has prepped for DVD burning
 for dir in $MYTHARCHIVETMP/work/[1-9]*
@@ -110,7 +121,8 @@ do
     infile=$dir/final.mpg
     [ -f $dir/final_orig.mpg ] && infile=$dir/final_orig.mpg
     outfile=$dir/new-final.mpg
-    date "+%F %T myburn[$$] Adding subtitles to $recording"
+
+    date "+%F %T myburn[$$] Adding subtitles to $outfile"
 
     # Let spumux (a dvdauthor tool) convert the .png images into subtitles
     # and add them to the final.mpg file.
@@ -125,7 +137,7 @@ done
 
 date "+%F %T myburn[$$] Executing dvdauthor"
 rm -rf $MYTHARCHIVETMP/work/dvd
-dvdauthor -x $MYTHARCHIVETMP/work/$DVDAUTHORXML || exit $?
+dvdauthor -x $MYTHARCHIVETMP/work/dvdauthor.xml || exit $?
 
 # I've had trouble burning DVDs on occasion, so I prefer to create an ISO
 # and then burn the ISO to dvd. If you trust growisofs to do both steps
@@ -133,9 +145,9 @@ dvdauthor -x $MYTHARCHIVETMP/work/$DVDAUTHORXML || exit $?
 # Especially if you don't have the disk space to play with.
 
 date "+%F %T myburn[$$] Executing mkisofs"
-mkisofs -dvd-video -V 'Test' -o $MYTHARCHIVETMP/work/burn.iso $MYTHARCHIVETMP/work/dvd || exit $?
+mkisofs -dvd-video -V 'Test' -o $MYTHARCHIVETMP/work/mythburn.iso $MYTHARCHIVETMP/work/dvd || exit $?
 
 date "+%F %T myburn[$$] Executing growisofs"
-growisofs -use-the-force-luke -dvd-compat -Z /dev/scd0=$MYTHARCHIVETMP/work/burn.iso || exit $?
+growisofs -dvd-compat -Z $DEVDVD=$MYTHARCHIVETMP/work/mythburn.iso || exit $?
 
-date "+%F %T myburn[$$] end"
+date "+%F %T myburn[$$] Success!"

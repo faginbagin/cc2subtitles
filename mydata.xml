@@ -2,11 +2,17 @@
 <mythburn>
     <job theme="Compact" >
         <media>
-            <file usecutlist="0" type="recording" encodingprofile="NONE" filename="1004_20080217183500.mpg" />
-            <file usecutlist="0" type="recording" encodingprofile="NONE" filename="1005_20080217184000.mpg" />
-            <file usecutlist="0" type="recording" encodingprofile="NONE" filename="1006_20080217184500.mpg" />
+
+            <!-- The following line is for a recording made by mythtv (Note the short file name) -->
             <file usecutlist="0" type="recording" encodingprofile="NONE" filename="1007_20080217185500.mpg" />
+
+            <!-- The following line is for a DVD VOB imported by mythdvd, (Note the full path name) -->
+            <file usecutlist="0" type="video" encodingprofile="NONE" filename="/video/mythtv/video/07-06-23-Swim.vob" />
+
         </media>
+
+        <!-- The following line defines option values, I added rundvdauthor="0" -->
         <options rundvdauthor="0" dvdrsize="4482" mediatype="0" erasedvdrw="0" createiso="0" doburn="0" savefilename="" />
+
     </job>
 </mythburn>
