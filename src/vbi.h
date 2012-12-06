@@ -22,6 +22,7 @@ class VBIDecoder
         VBIDecoder();
         ~VBIDecoder();
 
+        void            checkTime(PES_packet& pes);
         void            decode(PES_packet& pes);
 
         static void     eventHandler(vbi_event* event, void* user_data);

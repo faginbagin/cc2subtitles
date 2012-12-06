@@ -4,8 +4,6 @@
 #include "stream_id.h"
 #include "PS_pack.h"
 
-extern int verbose;
-
 /*
 Program System Target Decoder parameters
 */
@@ -33,7 +31,7 @@ P_STD_params::operator=(const P_STD_params& p)
 }
 
 int
-P_STD_params::decode(FILE* fp)
+P_STD_params::decode(FILE* fp, bool detail)
 {
     unsigned char buf[2];
 /*
@@ -94,7 +92,7 @@ PS_pack::reset()
 }
 
 int
-PS_pack::decode(FILE* fp)
+PS_pack::decode(FILE* fp, bool detail)
 {
     int c;
     unsigned char buf[128];
@@ -121,7 +119,7 @@ PS_pack::decode(FILE* fp)
     }
     startPos = ftello(fp)-4;
 
-    if (verbose > 2)
+    if (detail)
     {
         // According to 13818.1, we need to decode the next 10 bytes
         if (fread(&buf, 10, 1, fp) != 1)
@@ -232,7 +230,7 @@ PS_pack::decode(FILE* fp)
     header_length = buf[0] << 8;
     header_length += buf[1];
 
-    if (verbose > 2)
+    if (detail)
     {
     /*
         marker_bit  1   bslbf
@@ -288,7 +286,7 @@ PS_pack::decode(FILE* fp)
         while ((c = fgetc(fp)) != EOF && (c & 0x80))
         {
             P_STD_params p((stream_id_t)c);
-            p.decode(fp);
+            p.decode(fp, detail);
             params.push_back(p);
         }
         if (c != EOF)

@@ -13,29 +13,19 @@
 # "Myth Archive Temp Directory."
 
 # Please note the options attributes in my example job file, mydata.xml
-# I have disabled:
-# - creating an ISO with createiso="0"
-# - burning a DVD with doburn="0"
-# I have also added another attribute, rundvdauthor="0"
+# I have added another attribute, rundvdauthor="0"
 # You won't find rundvdauthor in a job file created by mytharchive
 # It is recognized by my version of mythburn.py,
 # and tells it not to execute dvdauthor.
 # That saves us some time in processing because this script will run dvdauthor
 # after adding subtitles to the final.mpg files.
-# I have included a patch for mythburn.py, based on 0.20.2.
+# I have included patches for mythburn.py, one for 0.20.2 and one for 0.21.
 
 # If you're not comfortable editing $MYHTARCHIVETMP/config/mydata.xml by hand,
 # another option is to go ahead and use mytharchive to create the job file,
 # then run this script after mytharchive is done.
 # If you do, be sure to disable the options "Create ISO" and "Burn DVD"
 # in the last MythArchive screen.
-
-# You need to disable "Use FIFOs" in MythArchive Settings.
-# MythArchive Settings are found in mythfrontend:
-# Utilities/Setup -> Setup -> Media Settings -> Archive Files Settings
-# "Use FIFOs" is the 4th option on Page 2
-# If you don't, the calls in this script to spumux to add subtitles won't work.
-# This does mean you'll use more disk space to create DVDs than you did before.
 
 # MYTHARCHIVETMP should be set to the value of your "Myth Archive Temp Directory."
 # It is the first option on page 1 of MythArchive Settings.
@@ -47,6 +37,22 @@ MYTHARCHIVETMP=@MYTHARCHIVETMP@
 # The configure script should have set this.
 MYTHARCHIVEDIR=@MYTHARCHIVEDIR@
 
+# The name of your dvd device.
+# The configure script should have set this.
+DEVDVD=@DEVDVD@
+
+# Should FIFOs (named pipes) be used to reduce disk space requirements?
+USEFIFOS=@USEFIFOS@
+
+# Should we create an ISO image?
+CREATEISO=@CREATEISO@
+
+# Get the theme name from mydata.xml
+eval `grep '<job ' $MYTHARCHIVETMP/config/mydata.xml | sed -e 's|.*<job ||' -e 's| *>||'`
+
+# Get options from mydata.xml
+eval `grep '<options ' $MYTHARCHIVETMP/config/mydata.xml | sed -e 's|.*<options ||' -e 's| */>||'`
+
 # The following variable determines whether to run tweakdvdxml.py
 # tweakdvdxml.py does some postprocessing on the dvdauthor.xml script
 # created by mythburn. It puts all the titles into one titleset, and tells
@@ -54,17 +60,78 @@ MYTHARCHIVEDIR=@MYTHARCHIVEDIR@
 # instead of going back to the main menu after playing each title.
 # It also moves the main menu from root menu to the titleset.
 # That's because it's most convenient with my universal remote.
-# I have only tested this script with dvdauthor.xml files created with
-# my own theme, so you probably should set this value to false.
-# FWIW, I think it will work with the Compact theme.
-# The configure script should have set this.
-RUNTWEAKDVDXML=@RUNTWEAKDVDXML@
+# I have only tested tweakdvdxml.py with dvdauthor.xml files created with
+# my own theme, mytheme, so this value is only true if theme="mytheme".
+# However, it may work with the Compact theme.
+if [ "$theme" = "mytheme" ]
+then
+    RUNTWEAKDVDXML=true
+else
+    RUNTWEAKDVDXML=false
+fi
 
-# The name of your dvd device.
-# The configure script should have set this.
-DEVDVD=@DEVDVD@
+processFile()
+{
+    dir=$1
+    # Find the original recording file
+    streaminfo=$dir/streaminfo.xml
+    [ -f $dir/streaminfo_orig.xml ] && streaminfo=$dir/streaminfo_orig.xml
+    recording=`grep filename= $streaminfo | \
+        sed -e 's/.*filename="//' -e 's/".*//'`
+    mkdir -p $dir/subs
+
+    date "+%F %T myburn[$$] $dir: Checking `basename $recording` for CC/Teletext"
+
+    # Scan the file, looking for closed captions
+    # If any are found, they'll be converted to .png images
+    # and the file, spumux.xml, will be built with references
+    # to the images and timestamps.
+
+    # Note: LD_LIBRARY_PATH is set in case you have installed a
+    # patched libzvbi library with the same prefix as
+    # cc2subtitles.
+    # We will try a second time with a skip count, in case there's
+    # an "End of Caption" sequence at the beginning throwing things off.
+    LD_LIBRARY_PATH=@libdir@ \
+        cc2subtitles -i $recording -p $dir/subs/ -x $dir/spumux.xml || \
+    LD_LIBRARY_PATH=@libdir@ \
+        cc2subtitles -s 10 -i $recording -p $dir/subs/ -x $dir/spumux.xml || \
+        return
+
+    # the final.mpg built by mythburn is renamed to final_orig.mpg
+    # and the one with subtitles will be final.mpg
+    # That's the name specified in dvdauthor.xml
+    [ ! -e $dir/final_orig.mpg ] && mv $dir/final.mpg $dir/final_orig.mpg
+
+    infile=$dir/final_orig.mpg
+    outfile=$dir/final.mpg
+
+    [ "$USEFIFOS" = true ] && mkfifo $outfile
+
+    date "+%F %T myburn[$$] $dir: Adding subtitles"
+
+    # Let spumux (a dvdauthor tool) convert the .png images into subtitles
+    # and add them to the final.mpg file.
+    (
+        if spumux $dir/spumux.xml < $infile > $outfile
+        then
+            date "+%F %T myburn[$$] $dir: Finished CC/Teletext processing"
+        else
+            mv -f $infile $outfile
+            return
+        fi
+    ) &
+
+    # If we aren't using fifos, wait for spumux to finish
+    # Otherwise, return and let dvdauthor read the fifos
+    # as spumux writes to them.
+    [ "$USEFIFOS" != true ] && wait
+
+}
 
 date "+%F %T myburn[$$] begin"
+
+renice +10 -p $$
 
 mkdir -p $MYTHARCHIVETMP/logs
 rm -rf $MYTHARCHIVETMP/work
@@ -73,8 +140,9 @@ mkdir -p $MYTHARCHIVETMP/work
 date "+%F %T myburn[$$] Executing mythburn"
 python $MYTHARCHIVEDIR/scripts/mythburn.py -j $MYTHARCHIVETMP/config/mydata.xml -l $MYTHARCHIVETMP/logs/progress.log || exit $?
 
-# Get options from mydata.xml
-eval `grep '<options' $MYTHARCHIVETMP/config/mydata.xml | sed -e 's|.*<options ||' -e 's| />||'`
+# mythburn doesn't exit with a non-zero exit code when there's a problem
+# like a non-existant file.
+[ -f $MYTHARCHIVETMP/work/dvdauthor.xml ] || exit 1
 
 if [ "$RUNTWEAKDVDXML" = true ]
 then
@@ -101,65 +169,33 @@ do
     # working directories
     [ ! -d $dir ] && continue
 
-    # Find the original recording file
-    streaminfo=$dir/streaminfo.xml
-    [ -f $dir/streaminfo_orig.xml ] && streaminfo=$dir/streaminfo_orig.xml
-    recording=`grep filename= $streaminfo | \
-        sed -e 's/.*filename="//' -e 's/".*//'`
-    mkdir -p $dir/subs
+    processFile $dir &
 
-    date "+%F %T myburn[$$] Checking $recording for CC/Teletext"
-
-    # Scan the file, looking for closed captions
-    # If any are found, they'll be converted to .png images
-    # and the file, spumux.xml, will be built with references
-    # to the images and timestamps.
-
-    # Note: LD_LIBRARY_PATH is set in case you have installed a
-    # patched libzvbi library with the same prefix as
-    # cc2subtitles.
-    # We will try a second time with a skip count, in case there's
-    # an "End of Caption" sequence at the beginning throwing things off.
-    LD_LIBRARY_PATH=@libdir@ \
-        cc2subtitles -i $recording -p $dir/subs/ -x $dir/spumux.xml || \
-    LD_LIBRARY_PATH=@libdir@ \
-        cc2subtitles -s 10 -i $recording -p $dir/subs/ -x $dir/spumux.xml || \
-        continue
-
-    # A little test allowing this script to be reentrant.
-    infile=$dir/final.mpg
-    [ -f $dir/final_orig.mpg ] && infile=$dir/final_orig.mpg
-    outfile=$dir/new-final.mpg
-
-    date "+%F %T myburn[$$] Adding subtitles to $outfile"
-
-    # Let spumux (a dvdauthor tool) convert the .png images into subtitles
-    # and add them to the final.mpg file.
-    spumux $dir/spumux.xml < $infile > $outfile || { rm $outfile; continue; }
-
-    # If spumux succeeds, the final.mpg built by mythburn is renamed to
-    # final_orig.mpgC and the one with subtitles is renamed final.mpg
-    # That's the name specified in dvdauthor.xml
-    [ ! -f $dir/final_orig.mpg ] && mv $dir/final.mpg $dir/final_orig.mpg
-    mv -f $outfile $dir/final.mpg
 done
 
-date "+%F %T myburn[$$] Executing dvdauthor"
+wait
+
+date "+%F %T myburn[$$] Executing dvdauthor -x $MYTHARCHIVETMP/work/dvdauthor.xml"
 rm -rf $MYTHARCHIVETMP/work/dvd
 dvdauthor -x $MYTHARCHIVETMP/work/dvdauthor.xml || exit $?
-
-# I've had trouble burning DVDs on occasion, so I prefer to create an ISO
-# and then burn the ISO to dvd. If you trust growisofs to do both steps
-# successfully, feel free to change these commands to your liking.
-# Especially if you don't have the disk space to play with.
-
-date "+%F %T myburn[$$] Executing mkisofs"
-mkisofs -dvd-video -V 'Test' -o $MYTHARCHIVETMP/work/mythburn.iso $MYTHARCHIVETMP/work/dvd || exit $?
 
 growopts=""
 [ "$mediatype" = 2 -a "$erasedvdrw" != 0 ] && growopts="-use-the-force-luke"
 
-date "+%F %T myburn[$$] Executing growisofs $growopts"
-growisofs -dvd-compat $growopts -Z $DEVDVD=$MYTHARCHIVETMP/work/mythburn.iso || exit $?
+if [ "$CREATEISO" = true ]
+then
+
+    date "+%F %T myburn[$$] Executing mkisofs -dvd-video -V 'MyBurn' -o $MYTHARCHIVETMP/work/mythburn.iso $MYTHARCHIVETMP/work/dvd"
+    mkisofs -dvd-video -V 'MyBurn' -o $MYTHARCHIVETMP/work/mythburn.iso $MYTHARCHIVETMP/work/dvd || exit $?
+
+    date "+%F %T myburn[$$] Executing growisofs -dvd-compat $growopts -Z $DEVDVD=$MYTHARCHIVETMP/work/mythburn.iso"
+    growisofs -dvd-compat $growopts -Z $DEVDVD=$MYTHARCHIVETMP/work/mythburn.iso || exit $?
+
+else
+
+    date "+%F %T myburn[$$] Executing growisofs -dvd-video -V 'MyBurn' $growopts -Z $DEVDVD $MYTHARCHIVETMP/work/dvd"
+    growisofs -dvd-video -V 'MyBurn' $growopts -Z $DEVDVD $MYTHARCHIVETMP/work/dvd || exit $?
+
+fi
 
 date "+%F %T myburn[$$] Success!"

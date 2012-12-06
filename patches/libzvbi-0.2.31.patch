@@ -1,0 +1,27 @@
+diff -Naur zvbi-0.2.31.old/src/caption.c zvbi-0.2.31/src/caption.c
+--- zvbi-0.2.31.old/src/caption.c	2008-02-24 09:18:03.000000000 -0500
++++ zvbi-0.2.31/src/caption.c	2009-01-31 03:40:03.000000000 -0500
+@@ -778,7 +778,11 @@
+ static inline void
+ update(cc_channel *ch)
+ {
++    /* I think this is supposed to copy a line from the hidden page
++     * to the other page. Here's the original source line:
+ 	vbi_char *acp = ch->line - ch->pg[0].text + ch->pg[1].text;
++     * Here's my "fix?" */
++	vbi_char *acp = ch->line - ch->pg[ch->hidden].text + ch->pg[ch->hidden^1].text;
+ 
+ 	memcpy(acp, ch->line, sizeof(*acp) * COLUMNS);
+ }
+diff -Naur zvbi-0.2.31.old/src/exp-txt.c zvbi-0.2.31/src/exp-txt.c
+--- zvbi-0.2.31.old/src/exp-txt.c	2008-02-24 09:17:41.000000000 -0500
++++ zvbi-0.2.31/src/exp-txt.c	2009-01-29 03:28:53.000000000 -0500
+@@ -355,7 +355,7 @@
+ 
+ 	rtl = rtl;
+ 
+-	if (1)
++	if (0)
+ 		fprintf (stderr, "vbi_print_page_region '%s' "
+ 		         "table=%d col=%d row=%d width=%d height=%d\n",
+ 			 format, table, column, row, width, height);

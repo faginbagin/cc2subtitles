@@ -93,6 +93,32 @@ VBIDecoder::~VBIDecoder()
 }
 
 void
+VBIDecoder::checkTime(PES_packet& pes)
+{
+    // We used to get timestamps from the private data stream,
+    // but it seems the ivtv driver is no longer providing meaningful
+    // timestamps.
+    // So we'll get the timestamps from the video stream.
+    if (pes.stream_id == video_stream_0 && pes.PTS_DTS_flags != 0)
+    {
+        // If the decoding timestamp is provided, use it.
+        // Otherwise, use the presentation timestamp.
+        Timestamp* ts = &pes.PTS;
+        if (pes.PTS_DTS_flags == 3)
+            ts = &pes.DTS;
+
+        if (firstTimestamp.base == 0)
+            firstTimestamp = *ts;
+
+        // Check for arithmetic wrap around.
+        long long diff = ts->base - firstTimestamp.base;
+        if (diff < 0)
+            diff += 0x100000000LL;
+        currTimestamp.base = (unsigned long long) diff;
+    }
+}
+
+void
 VBIDecoder::decode(PES_packet& pes)
 {
     unsigned char* buf = pes.PES_packet_data;
@@ -119,20 +145,9 @@ VBIDecoder::decode(PES_packet& pes)
     else
         return;
 
-    if (pes.PTS_DTS_flags)
-    {
-        if (firstTimestamp.base == 0)
-            firstTimestamp = pes.PTS;
-        long long diff = pes.PTS.base - firstTimestamp.base;
-        if (diff < 0)
-            diff += 0x100000000LL;
-        currTimestamp.base = (unsigned long long) diff;
-    }
-
     if (verbose > 1)
-        fprintf(fplog, "VBI: PTS=%.4f len=%d mask=%#llx\n",
+        fprintf(fplog, "VBI: time=%.4f len=%d mask=%#llx\n",
             (double)currTimestamp, len, mask.llword);
-
 
     for (i = 0; i < 36; i++)
     {
@@ -231,6 +246,10 @@ VBIDecoder::decode(PES_packet& pes)
         skipVBI--;
         return;
     }
+
+    if (verbose > 1)
+        fflush(fplog);
+
     // vbi_decode is very fussy about timestamps
     // if the difference between the previous time and the current time
     // is less than 0.025or greater than 0.050, it will blank the page
@@ -274,9 +293,7 @@ VBIDecoder::eventHandler(vbi_event* event)
             if (checkPageSize)
                 setTeletext(&page);
             checkPage(&page);
-            // Looks like this is a noop in version 0.2.x
-            // Might be necessary in 0.3.x
-            // vbi_unref_page(&page);
+            vbi_unref_page(&page);
             break;
         case VBI_EVENT_CAPTION:
             if (event->ev.caption.pgno != pageno)
@@ -286,20 +303,19 @@ VBIDecoder::eventHandler(vbi_event* event)
                         event->ev.caption.pgno, (double)currTimestamp);
                 break;
             }
+            if (!vbi_fetch_cc_page(decoder, &page, event->ev.caption.pgno, TRUE))
+                break;
             if (verbose)
             {
                 fprintf(fplog, "vbi_event: type=CAPTION pgno=%d curr=%.4f dirty: y=%d,%d roll=%d\n",
                     event->ev.caption.pgno, (double)currTimestamp,
                     page.dirty.y0, page.dirty.y1, page.dirty.roll);
+                fflush(fplog);
             }
-            if (!vbi_fetch_cc_page(decoder, &page, event->ev.caption.pgno, TRUE))
-                break;
             if (checkPageSize)
                 setCaption(&page);
             checkPage(&page);
-            // Looks like this is a noop in version 0.2.x
-            // Might be necessary in 0.3.x
-            // vbi_unref_page(&page);
+            vbi_unref_page(&page);
             break;
         case VBI_EVENT_NETWORK:
             fprintf(fplog, "vbi_event: type=NETWORK\n");
@@ -463,11 +479,14 @@ VBIDecoder::flushPage(Timestamp& endTS)
                 fflush(stderr);
                 exit(1);
             }
+            if (verbose)
+                fflush(fpxml);
         }
         else if (verbose)
         {
             fprintf(fplog, "Ignoring file=%s start(%.4f) >= end(%.4f)\n",
                 fileName, (double)startTimestamp, (double)endTS);
+            fflush(fplog);
         }
         *fileName = 0;
     }

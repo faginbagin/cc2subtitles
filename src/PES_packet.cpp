@@ -2,8 +2,6 @@
 #include "PES_packet.h"
 #include "PS_pack.h"
 
-extern int verbose;
-
 PES_packet::PES_packet()
 {
     stream_id = 0; 
@@ -41,7 +39,7 @@ PES_packet::reset()
 {
     // Delete any allocated buffers
     delete PES_extension_field;
-    delete PES_packet_data;
+    delete [] PES_packet_data;
     delete pack_header;
     // Reset key data members
     stream_id = 0; 
@@ -50,7 +48,7 @@ PES_packet::reset()
 }
 
 int
-PES_packet::decode(FILE* fp)
+PES_packet::decode(FILE* fp, bool detail)
 {
     int c;
     unsigned char buf[128];
@@ -82,7 +80,7 @@ PES_packet::decode(FILE* fp)
     }
     PES_packet_length_pos = ftello(fp);
 
-    if (verbose > 2 || stream_id == private_stream_1)
+    if (detail)
     {
         if (stream_id != program_stream_map
             && stream_id != padding_stream
@@ -350,7 +348,7 @@ PES_packet::decode(FILE* fp)
                     pack_field_length = c;
                     pos = ftello(fp);
                     pack_header = new PS_pack();
-                    if (pack_header->decode(fp) == EOF)
+                    if (pack_header->decode(fp, detail) == EOF)
                         return EOF;
                     if (ftello(fp) != pos + pack_field_length)
                     {

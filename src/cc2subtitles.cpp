@@ -12,7 +12,7 @@
 
 int decode();
 
-static char* shortOpts = "i:l:vp:P:x:w:h:s:";
+static const char* shortOpts = "i:l:vp:P:x:w:h:s:";
 
 static struct option longOpts[] =
 {
@@ -61,9 +61,9 @@ usage(const char* prog)
 int verbose = 0;
 FILE* fpin = stdin;
 FILE* fplog = stdout;
-char* xmlfile = "spumux.xml";
+const char* xmlfile = "spumux.xml";
 FILE* fpxml;
-char* prefix = "";
+const char* prefix = "";
 int   pageno = 1;
 // Frame width & height, if not set on command line, they'll be set
 // when we get the first vbi page event in vbi.cpp
@@ -163,7 +163,7 @@ decode()
         {
             pack.reset();
             pack.stream_id = c;
-            c = pack.decode(fpin);
+            c = pack.decode(fpin, verbose > 2);
             if (c == EOF)
                 break;
             if (verbose > 2)
@@ -173,12 +173,13 @@ decode()
         {
             pes.reset();
             pes.stream_id = c;
-            c = pes.decode(fpin);
+            c = pes.decode(fpin, verbose > 2 || pes.stream_id == private_stream_1 || pes.stream_id == video_stream_0);
             if (c == EOF)
                 break;
-            if (verbose > 2 /* || pes.stream_id == private_stream_1 */ )
+            if (verbose > 2)
                 pes.print(fplog);
 
+            vbi.checkTime(pes);
             if (pes.stream_id == private_stream_1)
                 vbi.decode(pes);
         }

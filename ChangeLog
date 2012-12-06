@@ -1,11 +1,19 @@
-2008-02-27  Helen Buus  <mythtv@hbuus.com>
+2009-02-02  Helen Buus  <mythtv@hbuus.com>
 
-	* Release 0.3.
+	* Release 0.5.
 
-	* Added autoconf/automake based configure script.
-	* myburn is now customized with configure options.
-	* Updated documentation and added it to package.
-	* Added copyright.
+	* Use timestamps from video stream instead of ivtv's VBI stream.
+	  Seems that ivtv 1.1.0 doesn't provide valid timestamps, unlike
+	  ivtv 1.0.0.
+	* Added mythburn patch for mythtv 0.21.
+	  Tested with mythtv-0.21.0+fixes18207.
+	* Added libzvbi patch to fix occasional core dump.
+	  Tested with zvbi-0.2.31, but problem was there in older versions.
+	* Added options to use fifos and create ISO.
+	* If MYTHARCHIVEDIR or MYTHARCHIVETMP don't exist, it's now a warning
+	  instead of an error. This makes it easier to use cc2subtitles when
+	  MythTv is not installed.
+	* Added decodempeg, an MPEG2 decoder.
 
 2008-03-04  Helen Buus  <mythtv@hbuus.com>
 
@@ -17,4 +25,13 @@
 	  Check mediatype & erasedvdrw, if set, tell
 	  tell growisofs to -use-the-force-luke.
 	* tweakdvdxml.py.in: Leave pgcs in menus alone.
+
+2008-02-27  Helen Buus  <mythtv@hbuus.com>
+
+	* Release 0.3.
+
+	* Added autoconf/automake based configure script.
+	* myburn is now customized with configure options.
+	* Updated documentation and added it to package.
+	* Added copyright.
 

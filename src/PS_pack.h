@@ -20,7 +20,7 @@ class P_STD_params
 
         P_STD_params& operator=(const P_STD_params&);
 
-        int     decode(FILE* fp);
+        int     decode(FILE* fp, bool detail);
         void    print(FILE* fp);
 
 /*
@@ -46,7 +46,7 @@ class PS_pack
         // Reinitialize data members so this instance can be reused
         void    reset();
 
-        int     decode(FILE* fp);
+        int     decode(FILE* fp, bool detail);
         void    print(FILE* fp);
 
 /*

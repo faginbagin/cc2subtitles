@@ -27,7 +27,7 @@ class PES_packet
         // Reinitialize data members so this instance can be reused
         void    reset();   
 
-        int     decode(FILE* fp);
+        int     decode(FILE* fp, bool detail);
         void    print(FILE* fp);
 /*
     packet_start_code_prefix    24  bslbf = 0000 0000 0001

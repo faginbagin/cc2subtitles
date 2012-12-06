@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT([cc2subtitles], [0.4], [mythtv@hbuus.com])
+AC_INIT([cc2subtitles], [0.5], [mythtv@hbuus.com])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 
 AC_CONFIG_SRCDIR([src/vbi.h])
@@ -22,11 +22,11 @@ AC_MSG_CHECKING([$MYTHARCHIVEDIR])
 if test -f "$MYTHARCHIVEDIR/scripts/mythburn.py"; then
     AC_MSG_RESULT(ok)
 else
-    AC_MSG_ERROR([mytharchive is not installed in $MYTHARCHIVEDIR])
+    AC_MSG_WARN([mytharchive is not installed in $MYTHARCHIVEDIR])
 fi
 AC_SUBST([MYTHARCHIVEDIR])
 
-MYTHARCHIVETMP=""
+MYTHARCHIVETMP="UNDEFINED"
 AC_ARG_WITH([mytharchive-tmp],
     [AS_HELP_STRING([--with-mytharchive-tmp=ARG],
         [mytharchive temp directory @<:@default=UNDEFINED@:>@])
@@ -37,21 +37,9 @@ AC_MSG_CHECKING([$MYTHARCHIVETMP])
 if test -d "$MYTHARCHIVETMP"; then
     AC_MSG_RESULT(ok)
 else
-    AC_MSG_ERROR([mytharchive temp directory, \"$MYTHARCHIVETMP\", does not exist])
+    AC_MSG_WARN([mytharchive temp directory, \"$MYTHARCHIVETMP\", does not exist])
 fi
 AC_SUBST([MYTHARCHIVETMP])
-
-RUNTWEAKDVDXML=false
-AC_ARG_ENABLE([tweakdvxml],
-    [AS_HELP_STRING([--enable-tweakdvdxml],
-        [let tweakdvdxml.py post process dvdauthor.xml @<:@default=no@:>@])
-    ]
-)
-if test "$enable_tweakdvdxml" = "yes"
-then
-    RUNTWEAKDVDXML=true
-fi
-AC_SUBST([RUNTWEAKDVDXML])
 
 DEVDVD="/dev/dvd"
 AC_ARG_WITH([dev-dvd],
@@ -67,6 +55,30 @@ else
     AC_MSG_ERROR([dvd device, \"$DEVDVD\", does not exist or is not a block device])
 fi
 AC_SUBST([DEVDVD])
+
+USEFIFOS=true
+AC_ARG_ENABLE([use-fifos],
+    [AS_HELP_STRING([--enable-use-fifos],
+        [use fifos instead of temporary files @<:@default=yes@:>@])
+    ]
+)
+if test "$enable_use_fifos" = "no"
+then
+    USEFIFOS=false
+fi
+AC_SUBST([USEFIFOS])
+
+CREATEISO=false
+AC_ARG_ENABLE([create-iso],
+    [AS_HELP_STRING([--enable-create-iso],
+        [create iso file with mkisofs @<:@default=no@:>@])
+    ]
+)
+if test "$enable_create_iso" = "yes"
+then
+    CREATEISO=true
+fi
+AC_SUBST([CREATEISO])
 
 # Checks for programs.
 AC_PROG_CXX
