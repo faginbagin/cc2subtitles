@@ -68,7 +68,7 @@ eval `grep '<options ' $MYTHARCHIVETMP/config/mydata.xml | sed -e 's|.*<options 
 # I have only tested tweakdvdxml.py with dvdauthor.xml files created with
 # my own theme, mytheme, so this value is only true if theme="mytheme".
 # However, it may work with the Compact theme.
-if [ "$theme" = "mytheme" ]
+if [ "$theme" = "xmytheme" ]
 then
     RUNTWEAKDVDXML=true
 else
@@ -101,6 +101,15 @@ processFile()
     recording=`grep filename= $streaminfo | \
         sed -e 's/.*filename="//' -e 's/".*//'`
 
+    usecutlist=`grep '<usecutlist>' $dir/info.xml | sed -e 's/.*<usecutlist>//' -e 's/<\/usecutlist>.*//'`
+    date "+%F %T myburn[$$] $dir: usecutlist=$usecutlist"
+
+    fudgeFactor=0
+if [ "$usecutlist" = "1" ]
+then
+    recording=$dir/newfile.mpg
+    streaminfo=$dir/streaminfo.xml
+else
     # Check if there's an .orig recording
     # If so, the recording has been transcoded and the .orig file
     # is the one that still has closed captions
@@ -113,7 +122,6 @@ processFile()
     fi
 
     # Extract durations for both original file and massaged file
-    fudgeFactor=0
     # If the type is nuv, the duration info is useless
     type=`grep type= $streaminfo | \
         sed -e 's/.*type="//' -e 's/".*//'`
@@ -140,6 +148,7 @@ processFile()
             fudgeFactor=0
         fi
     fi
+fi
 
     mkdir -p $dir/subs
 
