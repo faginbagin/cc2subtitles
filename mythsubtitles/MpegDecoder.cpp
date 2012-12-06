@@ -68,7 +68,11 @@ MpegDecoder::initVideo()
     videoCtx->release_buffer = avcodec_default_release_buffer;
     videoCtx->draw_horiz_band = NULL;
     videoCtx->slice_flags = 0;
+#if LIBAVCODEC_VERSION_INT < ((52<<16)+(0<<8)+0)
     videoCtx->error_resilience = FF_ER_COMPLIANT;
+#else
+    videoCtx->error_recognition = FF_ER_COMPLIANT;
+#endif
     videoCtx->workaround_bugs = FF_BUG_AUTODETECT;
     videoCtx->error_concealment = FF_EC_GUESS_MVS | FF_EC_DEBLOCK;
     videoCtx->idct_algo = FF_IDCT_AUTO;

@@ -561,7 +561,11 @@ NuvDecoder::UpdateCCText(vector<ccText*> *ccbuf,
             if (verbose > 1)
                 fprintf(fplog, "m_textlist: x=%d y=%d color=%d ttmode=%d text=%s\n",
                     cc->x, cc->y, cc->color, cc->teletextmode,
+#if QT_VERSION < 0x040000
                     (const char*)cc->text.utf8());
+#else
+                    (const char*)cc->text.toUtf8());
+#endif
             vbi_char* c = page.text + (cc->y-1)*page.columns + cc->x;
             const QChar* unicodeText = cc->text.unicode();
             int len = cc->text.length();

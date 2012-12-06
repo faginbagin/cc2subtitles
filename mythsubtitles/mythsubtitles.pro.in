@@ -19,6 +19,7 @@ INCLUDEPATH += $${MYTHTV_SRC}/libs/libavcodec
 INCLUDEPATH += $${MYTHTV_SRC}/libs/libavutil
 INCLUDEPATH += $${MYTHTV_SRC}/libs/libavformat
 INCLUDEPATH += $${MYTHTV_SRC}/libs/libmythtv
+INCLUDEPATH += $${MYTHTV_SRC}/libs/libmythdb
 
 LIBS += -L$${MYTHTV_SRC}/libs/libavformat
 LIBS += -lmythavformat-$$LIBVERSION

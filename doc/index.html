@@ -153,10 +153,25 @@ here it is:
 </tr>
 <tr>
 <td>
+<a href="cc2subtitles-0.7.tar.gz">cc2subtitles-0.7.tar.gz
+</a></td>
+<td>
+2010-05-27
+</td>
+<td>583 KiB</td>
+<td>
+<ul>
+<li>
+Upgraded to MythTV 0.22 and 0.23
+</ul>
+</td>
+</tr>
+<tr>
+<td>
 <a href="cc2subtitles-0.6.tar.gz">cc2subtitles-0.6.tar.gz
 </a></td>
 <td>
-2009-06-17
+2009-06-24
 </td>
 <td>583 KiB</td>
 <td>
@@ -299,6 +314,7 @@ not only for Debian based distributions (e.g. Ubuntu), but others, too.
 <li>
 Install and compile the source package, <b>zvbi</b>:
 <pre>
+# apt-get build-dep zvbi
 # apt-get --compile source zvbi
 </pre>
 <code>apt-get --compile</code> will first patch and configure the source
@@ -357,6 +373,25 @@ You do not need to install the .deb packages produced by this command.
 In fact, you can remove them.
 You just need to remember where the package was compiled.
 <p>
+Note: If you have installed the Mythbuntu Repos package, you need to add an appropriate deb-src line to /etc/apt/sources.list.d/mythbuntu-repos.list.
+Make a copy of the line similar to:
+<pre>
+deb http://us.autobuilds.mythbuntu.org/mythbuntu/trunk-0.22/ubuntu karmic main
+</pre>
+then change the word, deb, to deb-src on the copied line.
+Here's my version before the change:
+<pre>
+deb http://ppa.launchpad.net/mythbuntu/repos/ubuntu karmic main
+deb http://us.autobuilds.mythbuntu.org/mythbuntu/trunk-0.22/ubuntu karmic main
+</pre>
+and after the change:
+<pre>
+deb http://ppa.launchpad.net/mythbuntu/repos/ubuntu karmic main
+deb http://us.autobuilds.mythbuntu.org/mythbuntu/trunk-0.22/ubuntu karmic main
+deb-src http://us.autobuilds.mythbuntu.org/mythbuntu/trunk-0.22/ubuntu karmic main
+</pre>
+
+<p>
 <li>
 Create a symlink to the source:
 <pre>
@@ -376,13 +411,13 @@ use the --with-mythtv-src argument when you configure cc2subtitles.
 <li>
 Download and unpack cc2subtitles
 <pre>
-# wget http://www.hbuus.com/cc2subtitles/cc2subtitles-0.5.tar.gz
-# tar xf cc2subtitles-0.5.tar.gz
+# wget http://www.hbuus.com/cc2subtitles/cc2subtitles-0.7.tar.gz
+# tar xf cc2subtitles-0.7.tar.gz
 </pre>
 <li>
 Configure cc2subtitles
 <pre>
-# cd cc2subtitles-0.6
+# cd cc2subtitles-0.7
 # ./configure \
     --with-mytharchive-tmp=<i>path-to-mytharchive-temp-dir</i> \
     --with-mytharchive-dir=<i>path-to-mytharchive-install-dir</i> \
@@ -1008,7 +1043,7 @@ It was difficult to debug since valgrind and gdb watchpoints were no help.
 I finally got serious about tracking it down when I upgraded to mythtv-0.21
 and needed to make more changes to cc2subtitles.
 For what it's worth, my patch has been accepted by the zvbi project,
-so it shouldn't be needed with versions after 0.2.31.
+so it shouldn't be needed with versions after 0.2.33.
 <hr>
 <h2>
 Closing Remarks

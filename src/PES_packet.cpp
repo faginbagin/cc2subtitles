@@ -593,8 +593,8 @@ PES_packet::print(FILE* fp)
 
             if (pack_header_field_flag)
             {
-                fprintf(fp, "\tpack_field_length=%d\tpack_header=%p\n",
-                    pack_field_length, pack_header);
+                fprintf(fp, "\tpack_field_length=%d\n",
+                    pack_field_length);
             }
 
             if (program_packet_sequence_counter_flag)
@@ -614,13 +614,13 @@ PES_packet::print(FILE* fp)
 
             if (PES_extension_flag_2)
             {
-                fprintf(fp, "\tPES_extension_field_length=%d\tPES_extension_field=%p\n",
-                    PES_extension_field_length, PES_extension_field);
+                fprintf(fp, "\tPES_extension_field_length=%d\n",
+                    PES_extension_field_length);
             }
         }
     }
 
-    fprintf(fp, "\tPES_packet_data_length=%d\tPES_packet_data=%p\n",
-        PES_packet_data_length, PES_packet_data);
+    fprintf(fp, "\tPES_packet_data_length=%d\n",
+        PES_packet_data_length);
 }
 
