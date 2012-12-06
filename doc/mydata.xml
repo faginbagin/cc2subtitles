@@ -6,7 +6,7 @@
             <!-- The following line is for a recording made by mythtv (Note the short file name) -->
             <file usecutlist="0" type="recording" encodingprofile="NONE" filename="1007_20080217185500.mpg" />
 
-            <!-- The following line is for a DVD VOB imported by mythdvd, (Note the full path name) -->
+            <!-- The following line is for a DVD VOB imported by mythdvd (Note the full path name) -->
             <file usecutlist="0" type="video" encodingprofile="NONE" filename="/video/mythtv/video/07-06-23-Swim.vob" />
 
         </media>

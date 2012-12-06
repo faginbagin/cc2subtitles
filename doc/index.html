@@ -1,13 +1,16 @@
 <html>
 <head>
    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
-   <meta name="KeyWords" content="closed captions, ivtv, mythtv, libzvbi">
+   <meta name="KeyWords" content="closed captions, teletext, ivtv, mythtv, libzvbi">
    <title>cc2subtitles- Convert CCs to DVD subtitles</title>
 </head>
 <body>
 
+<h1 align=center>
+cc2subtitles
+</h1>
 <h2 align=center>
-cc2subtitles - Convert NTSC closed captions (or PAL Teletext?) to DVD subtitles
+Convert NTSC closed captions to DVD subtitles
 </h2>
 <hr>
 <b>cc2subtitles</b> is a solution for the one feature I wanted that MythTV didn't
@@ -34,23 +37,25 @@ if I can get a hold of some PAL recordings that have VBI data.
 Or, perhaps someone else in PAL land would like to do the work?
 <li>
 It converts IVTV encoded VBI data into DVD subtitles.
-It takes advantage of the fact that libzvbi can produce .png renderings of CC/Teletext.
-It then uses spumux (part of dvdauthor) to convert the .png files
-into DVD subtitles.
-I think the results are better than other solutions that use spumux to encode text based subtitles.
+It takes advantage of the fact that libzvbi can produce .png (Portable Network Graphics)
+renderings of CC/Teletext.
+An included bash script then uses spumux (part of dvdauthor) to
+convert the .png images into DVD subtitles.
+I think the results are more appealing than other solutions
+that use spumux to encode text based subtitles.
 The results look like what you're used to seeing on your TV,
 including support for italics and special characters used in Spanish & French,
 as well as the musical note.
 Plus, it supports closed caption colors.
 <br>
-<i>Note: getting special characters requires a <a href="#libzvbi.patch">patch for libzvbi</a>.</i>
+<i>Note: some special characters requires a <a href="#libzvbi.patch">patch for libzvbi</a>.</i>
 <li>
 I'm pretty sure it won't work if you like to cut commercials out of your recordings.
 That's because of the timestamp data I use to figure out where to add subtitles to recordings.
 I've worked around this problem by patching mytharchive's script, mythburn.py,
 to add chapter marks at the commercial marks found by mythcommflag.
 </ul>
-Here are a couple of example screen snapshots:
+Here are some example screen snapshots:
 <p>
 <img src="images/NotDancing-sub.jpg" width=640 height=480 align=ABSCENTER>
 <p>
@@ -66,9 +71,13 @@ that italics are supported. In this case, italics are used to indicate an off sc
 <img src="images/Spanish-sub.jpg" width=640 height=480 align=ABSCENTER>
 <p>
 The above snapshot demostrates that Spanish characters are supported.
-<br>
-<i>Note: requires <a href="#libzvbi.patch">patch for libzvbi</a>.</i>
-<br>
+<p>
+<img src="images/Spanish-nopatch.jpg" width=640 height=480 align=ABSCENTER>
+<p>
+The above snapshot was produced with an unpatched libzvbi.
+Some Spanish characters are rendered, but the upside down question mark is
+rendered as a block.
+<p>
 You may be wondering if the captions are clipped if you view a 4:3 recording
 in 16:9 mode. 
 They should not be clipped as long as you tell your DVD player to stretch the
@@ -78,68 +87,67 @@ For example, I set my Panasonic wide screen TV to full screen (not zoom)
 and use my Panasonic DVD player's Display menu to set "4:3 aspect" to Zoom.
 With these settings, subtitles are not clipped.
 <p>
-If you are comfortable compiling source and installing the results by hand
-without benefit of a configure script, you're welcome to give it a try now.
+If you are comfortable configuring, compiling and installing source packages,
+here it is:
 <p>
 <table border=1 cellpadding=1 cellspacing=0>
 <tr bgcolor="#ccccff">
 <td>Release</td>
 <td>Date</td>
-<td>Size</td>
+<td>Approximate Size</td>
 </tr>
 <tr>
 <td>
-<a href="cc2subtitles-0.2.tgz">cc2subtitles-0.2.tgz
+<a href="cc2subtitles-0.3.tar.gz">cc2subtitles-0.3.tar.gz
 </a></td>
-<td>2008-02-25 23:56</td>
-<td>31283 bytes</td>
+<td>
+2008-02-27
+</td>
+<td>241 Kbytes</td>
 </tr>
 </table>
 <p>
-Right now, there's just a simple Makefile that compiles <b>cc2subtitles</b>.
-It doesn't even have an install rule.
-<p>
-In the near future, I expect to provide something that's more "turnkey,"
-something a non-developer can easily use.
-But first I'll need to figure out how to use automake/configure and perhaps how to generate a binary debian package.
-<p>
-The above gzipped tar file contains a few other files:
+The package contains or builds a few other files:
 <dl>
 <dt>
-<a href="#myburn">myburn</a>
+<a href="#myburn">src/myburn</a>
 <dd>
 A bash script that automates the process of burning DVDs with closed captions converted to subtitles.
 <dt>
-<a href="#mydata.xml">mydata.xml</a>
+<a href="#mydata.xml">doc/mydata.xml</a>
 <dd>
 An example mytharchive job file.
 <dt>
-<a href="#mythburn.patch">mythburn.patch</a>
+<a href="#mythburn.patch">patches/mythburn.patch</a>
 <dd>
 My patch for mythburn.py,
 the mytharchive script that does most of the work of burning DVDs.
 <dt>
-<a href="#tweakdvdxml.py">tweakdvdxml.py</a>
+<a href="#tweakdvdxml.py">src/tweakdvdxml.py</a>
 <dd>
 A script that tweaks dvdauthor.xml to my taste.
 <dt>
-<a href="#libzvbi.patch">libzvbi.patch</a>
+<a href="#libzvbi.patch">patches/libzvbi.patch</a>
 <dd>
-A patch for libzvbi to get special characters.
+A patch for libzvbi to render all special characters.
+<dt>
+doc
+<dd>
+A copy of the documentation.
 </dl>
 
 <hr>
-<h3>
+<h2>
 Installation instructions
-</h3>
+</h2>
 <dl>
-<dt>Install libzvbi (without patch)
+<dt><b>Install libzvbi (without patch)</b>
 <dd>
 <p>
 Before you can build <b>cc2subtitles</b>,
 you must either install binary libzvbi development packages
 or install and build the source package with
-<a href="#libzvbi.patch">libzvbi.patch</a>.
+<a href="#libzvbi.patch">patches/libzvbi.patch</a>.
 The necessary binary packages are available in both Debian and Ubuntu repositories,
 and probably most other distributions.
 On Debian and Ubuntu, use your favorite package
@@ -150,11 +158,11 @@ For example:
 </pre>
 This should install the development header files as well as the runtime library.
 <p>
-<dt>Install libzvbi (with patch)
+<dt><b>Install libzvbi (with patch)</b>
 <dd>
 <p>
-You don't have to use my libzvbi.patch. But you may want to. See
-<a href="#libzvbi.patch">libzvbi.patch</a>
+You don't have to use libzvbi.patch. But you may want to. See
+<a href="#libzvbi.patch">patches/libzvbi.patch</a>
 for information about the patch.
 <p>
 <i>
@@ -177,7 +185,7 @@ the results will be the same as the binary package.
 Patch the source.
 <pre>
 # cd zvbi-0.2.25
-# patch -p1 < <i>path-to-cc2subtitles</i>/libzvbi.patch
+# patch -p1 < <i>path-to-cc2subtitles</i>/patches/libzvbi.patch
 </pre>
 <li>
 Recompile and install
@@ -186,35 +194,85 @@ Recompile and install
 </pre>
 </ol>
 <dt>
-Install cc2subtitles
+<b>Install cc2subtitles</b>
 <dd>
 <p>
 <ol>
 <li>
-Download, unpack and make cc2subtitles
+Download and unpack cc2subtitles
 <pre>
-# wget http://www.hbuus.com/cc2subtitles-0.1.tar.gz
-# tar xf cc2subtitles-0.1.tar.gz
-# cd cc2subtitles
-# make
+# wget http://www.hbuus.com/cc2subtitles/cc2subtitles-0.3.tar.gz
+# tar xf cc2subtitles-0.3.tar.gz
 </pre>
-
 <li>
-Install or add to your PATH
-<p>
-Personally, I find it easiest to add the cc2subtitles directory to my PATH.
-For example, add the following line to your profile:
+Configure cc2subtitles
 <pre>
-PATH=$PATH:$HOME/cc2subtitles
+# cd cc2subtitles-0.3
+# ./configure \
+    --with-mytharchive-tmp=<i>path-to-mytharchive-temp-dir</i> \
+    --with-mytharchive-dir=<i>path-to-mytharchive-install-dir</i> \
+    --with-dev-dvd=<i>dvd-device</i> \
+    --enable-tweakdvdxml
 </pre>
-The next time you login, cc2subtitles will be in your PATH.
-If you don't want to logout and login,
-you can execute the above command in your current login shell.
-</ol>
+These options configure the bash script, myburn,
+to match your environment and preferences.
 <p>
+<dl>
+<dt>
+<code>
+--with-mytharchive-tmp=<i>path-to-mytharchive-temp-dir</i>
+</code>
+<dd>
+Set the value to your <code>Myth Archive Temp Directory</code>, one of the
+<code>MythArchive Settings</code> found in mythfrontend:
+<br>
+<code>
+Utilities/Setup -> Setup -> Media Settings -> Archive Files Settings
+</code>
+<p>
+Not optional, there is no default value.
+<p>
+<dt>
+<code>
+--with-mytharchive-dir=<i>path-to-mytharchive-install-dir</i>
+</code>
+<dd>
+Set the value to the directory where the mytharchive plugin is installed.
+<p>
+Optional,
+the default value is: <code>/usr/share/mythtv/mytharchive</code>
+<p>
+<dt>
+<code>
+--with-dev-dvd=<i>dvd-device</i>
+</code>
+<dd>
+Set the value to the name of your DVD device.
+<p>
+Optional,
+the default value is: <code>/dev/dvd</code>
+<p>
+<dt>
+<code>
+--enable-tweakdvdxml
+</code>
+<dd>
+Enable this option if you want to execute tweakdvdxml.py.
+See <a href="#tweakdvdxml.py">src/tweakdvdxml.py</a> for more information.
+<p>
+Optional, the default is not to execute tweakdvdxml.py.
+<p>
+</dl>
+<li>
+Build and install
+<pre>
+# make
+# make install
+</pre>
+</ol>
 
 <dt>
-Configure mytharchive
+<b>Configure mytharchive</b>
 <dd>
 <p>
 Because of the way the myburn script works with mytharchive and mythburn.py, 
@@ -260,64 +318,7 @@ If not, I will try to get my changes accepted by mythtv development.
 <p>
 
 <dt>
-Configure myburn
-<dd>
-<p>
-You will need to change the values of some variables in this bash script
-to match your environment and preferences.
-<p>
-<dl>
-<dt>
-<code>
-MYTHARCHIVETMP
-</code>
-<dd>
-Change the value to your <code>Myth Archive Temp Directory</code>, one of the
-<code>MythArchive Settings</code> found in mythfrontend:
-<pre>
-Utilities/Setup -> Setup -> Media Settings -> Archive Files Settings
-</pre>
-<p>
-<dt>
-<code>
-MYTHARCHIVEDIR
-</code>
-<dd>
-Set the value to the directory where the mytharchive plugin is installed.
-are installed.
-This variable is currently set twice in the script.
-The first value is the default directory for Debian based distributions:
-<pre>
-MYTHARCHIVEDIR=/usr/share/mythtv/mytharchive
-</pre>
-The second value is the directory where I have installed my modifications.
-<pre>
-MYTHARCHIVEDIR=$HOME/build/share/mythtv/mytharchive
-</pre>
-It should be sufficient to simply comment out the second value.
-If you don't comment it out, the second value wins.
-<p>
-<dt>
-<code>
-RUNTWEAKDVDXML
-</code>
-<dd>
-Set the value to <code>true</code> if you want to execute tweakdvdxml.py.
-Set the value to <code>false</code> if you DON'T want to execute tweakdvdxml.py.
-See <a href="#tweakdvdxml.py">tweakdvdxml.py</a> for information.
-<p>
-<dt>
-<code>
-DEVDVD
-</code>
-<dd>
-Set the value to the name of your DVD device.
-Mine is /dev/dvd1
-</dl>
-<p>
-
-<dt>
-Patch mythburn.py
+<b>Patch mythburn.py</b>
 <dd>
 <p>
 To apply the patch, execute one of the following commands.
@@ -326,42 +327,49 @@ To apply the patch, execute one of the following commands.
 <li>
 If you have the mythplugins source installed:
 <pre>
-# patch -d <i>path-to-mythplugins-source</i> -p1 -b < mythburn.patch
+# patch <b>-p1</b> -d <i>path-to-mythplugins-source</i> -b < patches/mythburn.patch
+# cd <i>path-to-mythplugins-source</i>
+# make install
 </pre>
 <li>
 If you do not have the mythplugins source installed:
 <pre>
-# patch -d <i>path-to-mytharchive-installdir</i> -p3 -b < mythburn.patch
+# patch <b>-p3</b> -d <i>path-to-mytharchive-install-dir</i> -b < patches/mythburn.patch
 </pre>
-where <code><i>path-to-mytharchive-installdir</i></code> is the same value
-you used for <code>MYTHARCHIVEDIR</code> in the myburn script.
+where <code><i>path-to-mytharchive-install-dir</i></code> is the same value
+you used when you configured the cc2subtitles package.
 </ul>
+<p>
+Note the different values for patch's <b>-p</b>, prefix strip, argument.
 <p>
 <i>
 Note: it is not absolutely essential to apply this patch.
 But if you don't, you will have problems if you alternate between
 using myburn and mytharchive to burn DVDs.
-See <a href="#mythburn.patch">mythburn.patch</a> for more information
+See <a href="#mythburn.patch">patches/mythburn.patch</a> for more information
 and work arounds.
 </i>
 <p>
 
 <dt>
-Burn a DVD
+<b>Burn a DVD</b>
 <dd>
 <p>
 <ol>
 <li>
-Create or edit the job file, $MYTHARCHIVETMP/config/mydata.xml.
+Create or edit the job file,
+<code><i>path-to-mytharchive-temp-dir</i>/config/mydata.xml</code>.
 <br>
-I provide an example and a detailed explanation: 
-<a href="#mydata.xml">mydata.xml</a>.
+See
+<a href="#mydata.xml">doc/mydata.xml</a>
+for more information.
 <p>
-If you are not comfortable editing the file, you can use the mytharchive
-plugin to do it.
+If you are not comfortable editing the file, you can use
+the mytharchive plugin to create the file.
 Just be aware that this will mean your computer will duplicate effort
 on some time consuming tasks.
-Be sure you disable the "Create ISO" and "Burn DVD" options.
+If you use the plugin,
+be sure you disable the "Create ISO" and "Burn DVD" options.
 <p>
 <li>
 Insert blank or rewritable media into your burner.
@@ -396,15 +404,15 @@ Here's example output from a successful burn:
 </dl>
 
 <hr>
-<h3>
+<h2>
 More Details
-</h3>
+</h2>
 
-<h4>
+<h3>
 <a name="cc2subtitles">
-cc2subtitles
-</h4>
-An executable that reads a TV recording and renders NTSC closed captions (and possibly PAL/SECAM Teletext) as .png (Portable Network Graphics) image files.
+src/cc2subtitles
+</h3>
+This executable program reads a TV recording and renders NTSC closed captions (and possibly PAL/SECAM Teletext) as .png (Portable Network Graphics) image files.
 <p>
 If the recording contains VBI data encoded by the IVTV driver,
 cc2subtitles will feed the data to the libzvbi library to render closed captions
@@ -418,22 +426,22 @@ the images into DVD subtitles and embeds them in an MPEG2 file.
 cc2subtitles also adds XML comment tags containing the closed caption text
 in spumux.xml.
 <p>
-If no closed captions are found in the TV recording, cc2subtitles wil remove spumux.xml and exit with a non-zero code.
-<h4>
+If no closed captions are found in the TV recording,
+cc2subtitles will remove spumux.xml and exit with a non-zero code.
+<h3>
 <a name="myburn">
-myburn
-</h4>
+src/myburn
+</h3>
 This bash script is a wrapper around mythburn.py, which does most of the work
 for mytharchive, as well as cc2subtitles.
 I prefer to use it from the command line rather than mytharchive,
 because I can still watch recordings with mythfrontend while
 this script is busy prepping files to burn to DVD.
 It assumes you have set up a mytharchive job file,
-<code>$MYTHARCHIVETMP/config/mydata.xml</code>
-The job file is a file that mytharchive creates to tell mythburn what
-recordings and videos you want to burn to DVD.
+<code><i>path-to-mytharchive-temp-dir</i>/config/mydata.xml</code>,
+descriped below.
 <p>
-<b>myburn</b> automates the process of:
+myburn automates the process of:
 <ol>
 <li>
 transcoding, demuxing, and remuxing recordings and videos into a DVD compatible format.
@@ -459,30 +467,28 @@ executing mkisofs to convert the DVD file system into an ISO image.
 executing growisofs to burn the ISO image onto DVD.
 </ol>
 The mytharchive script, mythburn.py, normally does all but steps 3 and 4.
-<p>
-You will need to edit myburn to match your environment and preferences.
 
-<h4>
+<h3>
 <a name="mydata.xml">
-mydata.xml
-</h4>
+doc/mydata.xml
+</h3>
 An example mytharchive job file.
 <p>
 When you use mytharchive to burn DVDs, it creates the job file,
-<code>$MYTHARCHIVETMP/config/mydata.xml</code>.
+<code><i>path-to-mytharchive-temp-dir</i>/config/mydata.xml</code>.
 The job file is the way mytharchive tells it's helper script, mythburn.py, what recordings and videos you want to burn to DVD.
 The file also stores the choices you make on whether to create an ISO image
 or to burn a DVD. Here's a copy of the example:
 <pre>
 &lt;!DOCTYPE mythburn>
 &lt;mythburn>
-    &lt;job theme="mytheme" >
+    &lt;job theme="Compact" >
         &lt;media>
 
 	    &lt;!-- The following line is for a recording made by mythtv (Note the short file name) -->
             &lt;file usecutlist="0" type="recording" encodingprofile="NONE" filename="1007_20080217185500.mpg" />
 
-	    &lt;!-- The following line is for a DVD VOB imported by mythdvd, (Note the full path name) -->
+	    &lt;!-- The following line is for a DVD VOB imported by mythdvd (Note the full path name) -->
             &lt;file usecutlist="0" type="video" encodingprofile="NONE" filename="/video/mythtv/video/07-06-23-Swim.vob" />
 
         &lt;/media>
@@ -493,6 +499,16 @@ or to burn a DVD. Here's a copy of the example:
 &lt;/mythburn>
 </pre>
 <dl>
+<dt>
+<code>&lt;job></code> element
+<dd>
+<p>
+This element's theme attribute specifies the look and feel you want for your DVD.
+The available themes can be found here:
+<code><i>path-to-mytharchive-install-dir</i>/themes</code>
+where <code><i>path-to-mytharchive-install-dir</i></code> is the
+directory where the mytharchive plugin is installed.
+<p>
 <dt>
 <code>&lt;file></code> elements
 <dd>
@@ -510,26 +526,27 @@ contains recordings made by mythtv.
 I can usually figure out what recording I want by listing the contents of
 the directory.
 The file names are formatted as follows:
-<code>tuner#channel#_YYYYMMDDhhmmss.mpg</code>.
+<code>TCCC_YYYYMMDDhhmmss.mpg</code>.
 In this case:
+<p>
+<code>T</code> is 1 for tuner 1.
 <br>
-<code>tuner#</code> is 1.
+<code>CCC</code> is 007 for channel 7.
 <br>
-<code>channel#</code> is 007.
+<code>YYYY</code> is 2008, the year.
 <br>
-<code>YYYY</code> is 2008.
+<code>MM</code> is 02, the month.
 <br>
-<code>MM</code> is 02.
+<code>DD</code> is 17, the day of the month.
 <br>
-<code>DD</code> is 17.
+<code>hh</code> is 18, the hour based on 24 hour clock.
 <br>
-<code>hh</code> is 18.
+<code>mm</code> is 55, the minutes.
 <br>
-<code>mm</code> is 55.
-<br>
-<code>ss</code> is 00.
-<br>
-In other words, the recording was made on tuner 1, channel 7, on February 17, 2008 at 18:55:00 (6:55 PM).
+<code>ss</code> is 00, the seconds.
+<p>
+In other words, the recording was made on tuner 1, channel 7,
+on February 17, 2008 starting at 18:55:00 (6:55 PM).
 <p>
 For each video you select,
 there will be a <code>&lt;file></code> element
@@ -550,8 +567,9 @@ video and audio.
 <dt>
 <code>encodingprofile</code>
 <dd>
-can be HQ, SP, LP or EP, or it can be NONE, if you don't want mythburn.py
-to re-encode your recordings or videos.
+can be HQ (high quality, 1 hour/DVD), SP (standard play, 2 hours/DVD),
+LP (long play, 4 hours/DVD) or EP (extended play, 6 hours/DVD),
+or it can be NONE, if you don't want your recordings or videos re-encoded.
 </dl>
 <dt>
 <p>
@@ -564,7 +582,7 @@ There should be only one <code>&lt;option></code> element.
 <dt> <code>rundvdauthor</code> <dd>
 I added support for this option to mythburn.py.
 If you use 
-<a href="#mythburn.patch">mythburn.patch</a>,
+<a href="#mythburn.patch">patches/mythburn.patch</a>,
 setting this attribute to 0 will tell mythburn.py NOT to run dvdauthor.
 This will save time because the myburn script will run dvdauthor after it adds
 CC subtitles to the final DVD titles.
@@ -604,16 +622,16 @@ myburn will burn later.
 
 <dt> <code>savefilename</code> <dd>
 As long as createiso is 0, this attribute has no effect.
-Leav it as the null string.
+Leave it as the null string.
 
 </dl>
 
 </dl>
 
-<h4>
+<h3>
 <a name="mythburn.patch">
-mythburn.patch
-</h4>
+patches/mythburn.patch
+</h3>
 My patch for mythburn.py,
 the mytharchive script that does most of the work of burning DVDs.
 It patches the script that comes with mythplugins-0.20.2.
@@ -629,7 +647,7 @@ The option is specified in the mytharchive job file by adding the attribute:
 <code>rundvdauthor="0"</code>
 to the options element.
 See 
-<a href="#mydata.xml">mydata.xml</a>
+<a href="#mydata.xml">doc/mydata.xml</a>
 for an example.
 Since dvdauthor has to be run after cc2subtitles and spumux,
 telling mythburn.py to not run dvdauthor reduces the time it takes
@@ -655,30 +673,33 @@ So I found the cause and fixed it.
 I changed how recording times are formatted on menus that display recording times.
 Originally, mythburn.py used the start time of a program,
 not the time when the recording started,
-and it didn't display when the program or recording ended.
+and it didn't display when the recording ended.
 So, you couldn't tell, looking at the menu, how long any title runs.
 I changed it to display when recording started and ended.
 </ol>
 If you do not apply this patch, and want to switch between using mytharchive
 and myburn, you may need to work around problem 3.
-<p>
+<ul>
+<li>
 If you don't intend to use myburn after mytharchive fills in the job file,
 mydata.xml,
 you will need to execute the following command before you use mytharchive:
 <pre>
-# rm -rf <i>path-to-mytharchive-tempdir</i>/work
+# rm -rf <i>path-to-mytharchive-temp-dir</i>/work
 </pre>
-where <code><i>path-to-mytharchive-tempdir</i></code> is the same value
-you used for <code>MYTHARCHIVETMP</code> in the myburn script.
+where <code><i>path-to-mytharchive-temp-dir</i></code> is the same value
+you used when you configured the cc2subtitles package.
 <p>
+<li>
 If the reason you want to use mytharchive is to fill in the job file,
 mydata.xml, and you still want to use myburn to add CC subtitles,
 you just need to run myburn after mytharchive terminates.
 Be sure you disable the "Create ISO" and "Burn DVD" options.
-<h4>
+</ul>
+<h3>
 <a name="tweakdvdxml.py">
-tweakdvdxml.py
-</h4>
+src/tweakdvdxml.py
+</h3>
 A script that tweaks dvdauthor.xml to my taste.
 tweakdvdxml.py does some postprocessing on the dvdauthor.xml script
 created by mythburn.py:
@@ -711,39 +732,61 @@ Some suggestions:
 <ol>
 <li>
 Don't burn DVDs with a mix of TV recordings and imported videos.
+<p>
 <li>
 Rerun dvdauthor with the untweaked dvdauthor_orig.xml, e.g.:
 <pre>
-dvdauthor -x $MYTHARCHIVETMP/work/dvdauthor_orig.xml
+dvdauthor -x <i>path-to-mytharchive-temp-dir</i>/work/dvdauthor_orig.xml
 </pre>
 <li>
-Disable tweakdvdxml.py by setting:
-<pre>
-RUNTWEAKDVDXML=false
-</pre>
-in myburn.
+Disable tweakdvdxml.py by configuring the cc2subtitles package without the
+option, <code>--enable-tweakdvdxml</code>.
 </ol>
 
-<h4>
+<h3>
 <a name="libzvbi.patch">
-libzvbi.patch
-</h4>
+patches/libzvbi.patch
+</h3>
 This patch addresses two issues with the current release of libzvbi, 0.2.25.
 <ul>
 <li>
-It fixes a bug that causes musical notes, Spanish and French characters to be rendered as blocks.
-This bug is fixed in the CVS version.
+It fixes a bug that causes some (but not all) special characters to be rendered as blocks.
+In particular, the musical note and upside down question mark will be
+rendered as blocks if you don't use this patch.
+The bug is fixed in the CVS version.
 When there is a new release available, my patch should not be needed.
 <li>
 It disables an annoying message that libzvbi writes to stderr.
-Not a big deal, just annoying.
+Not a big deal, just annoying and time consuming.
 </ul>
 
 <hr>
-<h3>
+<h2>
 Closing Remarks
-</h3>
-I welcome questions and comments.
+</h2>
+All feedback, questions and comments, are welcome.
+For example:
+<ul>
+<li>
+Comments on the documentation.
+<br>
+Is the level of detail too much, too little, or about right?
+<br>
+How about the way it's organized?
+<li>
+Comments on the package.
+<br>
+Can you use the package in its current form?
+<br>
+It doesn't have a pretty GUI and requires
+some knowledge of mythtv to configure and use effectively.
+Is that a show stopper?
+<br>
+Is your MythTV temporary directory large enough to handle the increased
+demands as a result of disabling "Use FIFOs"?
+<li>
+Of course, if you like it, I welcome positive feedback.
+</ul>
 You can reach me at <u>mythtv at hbuus.com</u> (replace the "at" with @).
 <p>
 The latest version of this document can be found at:
