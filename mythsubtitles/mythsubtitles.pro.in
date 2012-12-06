@@ -1,0 +1,29 @@
+MYTHTV_SRC = @MYTHTV_SRC@
+include ( $${MYTHTV_SRC}/config.mak )
+include ( $${MYTHTV_SRC}/settings.pro)
+
+TEMPLATE = app
+CONFIG += thread
+target.path = $${PREFIX}/bin
+INSTALLS = target
+
+QMAKE_CLEAN += $(TARGET)
+
+# Input
+SOURCES += main.cpp
+SOURCES += Decoder.cpp IvtvDecoder.cpp MpegDecoder.cpp NuvDecoder.cpp
+SOURCES += vbi.cpp
+
+INCLUDEPATH += $${MYTHTV_SRC}/libs
+INCLUDEPATH += $${MYTHTV_SRC}/libs/libavcodec
+INCLUDEPATH += $${MYTHTV_SRC}/libs/libavutil
+INCLUDEPATH += $${MYTHTV_SRC}/libs/libavformat
+INCLUDEPATH += $${MYTHTV_SRC}/libs/libmythtv
+
+LIBS += -L$${MYTHTV_SRC}/libs/libavformat
+LIBS += -lmythavformat-$$LIBVERSION
+LIBS += -L$${MYTHTV_SRC}/libs/libavutil
+LIBS += -lmythavutil-$$LIBVERSION
+LIBS += -L$${MYTHTV_SRC}/libs/libavcodec
+LIBS += -lmythavcodec-$$LIBVERSION
+LIBS += -lzvbi

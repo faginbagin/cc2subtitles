@@ -47,6 +47,7 @@ class PS_pack
         void    reset();
 
         int     decode(FILE* fp, bool detail);
+        int     copy(FILE* fp, FILE* fpout);
         void    print(FILE* fp);
 
 /*

@@ -1,4 +1,6 @@
 
+#include <string.h>
+
 #include "PES_packet.h"
 #include "PS_pack.h"
 
@@ -65,7 +67,7 @@ PES_packet::decode(FILE* fp, bool detail)
         if (stream_id < program_stream_map)
         {
             fprintf(stderr, "PES_packet: pos=%lld: Invalid stream_id=%#x\n",
-                ftello(fp)-4, stream_id);
+                (long long)ftello(fp)-4, stream_id);
             return -c;
         }
     }
@@ -106,7 +108,7 @@ PES_packet::decode(FILE* fp, bool detail)
             if ((c & 0xc0) != 0x80)
             {
                 fprintf(stderr, "PES_packet: pos=%lld: Expected 10xxxxxx (base2), found %#x\n",
-                    ftello(fp)-1, c);
+                    (long long)ftello(fp)-1, c);
                 return EOF;
             }
             PES_scrambling_control = (c & 0x30) >> 4;
@@ -129,7 +131,7 @@ PES_packet::decode(FILE* fp, bool detail)
             if (PTS_DTS_flags == 01)
             {
                 fprintf(stderr, "PES_packet: pos=%lld: Invalid PTS_DTS_flags, found %#x\n",
-                    ftello(fp)-1, PTS_DTS_flags);
+                    (long long)ftello(fp)-1, PTS_DTS_flags);
                 return EOF;
             }
             ESCR_flag = (c & 0x20) >> 5;
@@ -220,7 +222,7 @@ PES_packet::decode(FILE* fp, bool detail)
                 if ((buf[0] & 0x80) != 0x80 || (buf[2] & 0x01) != 0x01)
                 {
                     fprintf(stderr, "PES_packet: pos=%lld: Marker bits in ES_rate are not 1\n",
-                        ftello(fp)-3);
+                        (long long)ftello(fp)-3);
                     return EOF;
                 }
                 ES_rate = ((unsigned int)buf[0] & 0x7f)<< (16-1);
@@ -352,8 +354,8 @@ PES_packet::decode(FILE* fp, bool detail)
                         return EOF;
                     if (ftello(fp) != pos + pack_field_length)
                     {
-                        fprintf(stderr, "PES_packet: pos=%lld: pos=%lld: expected pos=%lld after decoding PS_pack\n",
-                            ftello(fp), pos + pack_field_length);
+                        fprintf(stderr, "PES_packet: pos=%lld: expected pos=%lld after decoding PS_pack\n",
+                            (long long)ftello(fp), (long long)pos + pack_field_length);
                     }
                 }
 
@@ -424,7 +426,7 @@ PES_packet::decode(FILE* fp, bool detail)
             if (stuffing_pos < pos)
             {
                 fprintf(stderr, "PES_packet: pos=%lld: (PES_header_data_length_pos+PES_header_data_length)=%lld < pos\n",
-                    pos, stuffing_pos);
+                    (long long)pos, (long long)stuffing_pos);
                 return EOF;
             }
             if (fseeko(fp, stuffing_pos, SEEK_SET) < 0)
@@ -463,12 +465,12 @@ PES_packet::decode(FILE* fp, bool detail)
         if (endpos < pos || PES_packet_data_length < 0)
         {
             fprintf(stderr, "PES_packet: pos=%lld: (PES_packet_length_pos+PES_packet_length)=%lld < pos\n",
-                pos, endpos);
+                (long long)pos, (long long)endpos);
             return EOF;
         }
 
         PES_packet_data = new unsigned char[PES_packet_data_length];
-        if (fread(PES_packet_data, PES_packet_data_length, 1, fp) == EOF)
+        if (fread(PES_packet_data, PES_packet_data_length, 1, fp) != 1)
             return EOF;
     }
     else
@@ -479,11 +481,50 @@ PES_packet::decode(FILE* fp, bool detail)
     return 0;
 }
 
+int
+PES_packet::copy(FILE* fp, FILE* fpout)
+{
+    int c;
+    unsigned char buf[128];
+    off_t pos;
+
+    if (stream_id == 0)
+    {
+        // Make sure we're starting at a start code prefix
+        if ((c = decodeStartCode(fp)) == EOF)
+            return EOF;
+
+        stream_id = c;
+        // Validate stream_id
+        if (stream_id < program_stream_map)
+        {
+            fprintf(stderr, "PES_packet: pos=%lld: Invalid stream_id=%#x\n",
+                (long long)ftello(fp)-4, stream_id);
+            return -c;
+        }
+    }
+    startPos = ftello(fp)-4;
+
+    // Write the start code
+    writeStartCode(stream_id, fpout);
+
+    if (PES_packet_length == 0)
+    {
+        if (fread(buf, 2, 1, fp) != 1)
+            return EOF;
+        fwrite(buf, 2, 1, fpout);
+        PES_packet_length = buf[0] << 8;
+        PES_packet_length += buf[1];
+    }
+
+    return copyBytes(PES_packet_length, fp, fpout);
+}
+
 void
 PES_packet::print(FILE* fp)
 {
     fprintf(fp, "PES_packet: pos=%lld stream_id=%#x PES_packet_length=%d\n",
-        startPos, stream_id, PES_packet_length);
+        (long long)startPos, stream_id, PES_packet_length);
 
     if (stream_id != program_stream_map
         && stream_id != padding_stream

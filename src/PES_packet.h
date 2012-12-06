@@ -28,6 +28,7 @@ class PES_packet
         void    reset();   
 
         int     decode(FILE* fp, bool detail);
+        int     copy(FILE* fp, FILE* fpout);
         void    print(FILE* fp);
 /*
     packet_start_code_prefix    24  bslbf = 0000 0000 0001

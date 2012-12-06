@@ -2,7 +2,7 @@
 <head>
    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
    <meta name="KeyWords" content="closed captions, teletext, ivtv, mythtv, libzvbi">
-   <title>cc2subtitles- Convert CCs to DVD subtitles</title>
+   <title>cc2subtitles - Convert CCs to DVD subtitles</title>
 </head>
 <body>
 
@@ -10,20 +10,59 @@
 cc2subtitles
 </h1>
 <h2 align=center>
-Convert NTSC closed captions to DVD subtitles
+Convert Closed Captions to DVD Subtitles
 </h2>
 <hr>
 <b>cc2subtitles</b> is a solution for the one feature I wanted that MythTV didn't
 provide "out of the box."
 Namely, the ability to burn recordings to DVDs with closed captions.
+If you're reading this, you know that closed captions are lost when you use
+the MythTV plugin, mytharchive, to burn DVDs recorded by MythTV.
 <p>
 Here are some details that should help you decide whether <b>cc2subtitles</b> might be useful to you:
 <ul>
 <li>
-It only works with recordings made with the IVTV driver, the one used by Hauppauge analog cards.
-FWIW, I have a PVR-150.
+<b>cc2subtitles</b> is the project name.
+It contains a number of tools used to burn DVDs with closed captions.
+The project started with a single program called <b>cc2subtitles</b>,
+which can extract closed captions from recordings made with the ivtv and cx18
+drivers, converting them into a format that spumux (a dvdauthor tool)
+can use to add the closed captions as subtitles to recordings.
+Other tools have been added to this project over time.
 <li>
-It uses a library called
+The <b>cc2subtitles</b> program only
+works with recordings made with MPEG-2 hardware encoders,
+such as Hauppauge analog cards
+supported by the ivtv and cx18 drivers.
+Tested with NTSC recordings made with the ivtv and cx18 drivers using the analog
+inputs of a Hauppauge PVR-150 and HVR-1600 connected to a US cable TV provider.
+<li>
+The latest addition to the project is <b>mythsubtitles</b>, which can extract
+closed captions from a wider variety of media file formats.
+It is known to work with the following:
+<ul>
+<li>
+ATSC/QAM recordings made with hardware DVB encoders supported by the cx18 and cx88 drivers and probably other dvb drivers.
+Tested with QAM recordings made with the cx18 and cx88 drivers using the digital inputs of a Hauppauge HVR-1600 and a pcHDTV HD-5500 connected to a US cable TV provider.
+<li>
+Recordings made with MPEG-2 hardware encoders supported by the ivtv and cx18 drivers.
+Tested with NTSC recordings made with the ivtv and cx18 drivers using the analog inputs of a Hauppauge PVR-150 and HVR-1600 connected to a US cable TV provider.
+<li>
+MythTV's NuppelVideo recordings, file extension .nuv.
+Tested with NTSC recordings made with the cx88 driver using the analog input of a pcHDTV HD-5500 connected to a US cable TV provider.
+<li>
+Individual titles ripped from DVDs, typical file extension .vob.
+Tested with titles ripped from NTSC DVDs using MythTV's MythVideo plug-in and
+the "Perfect" option.
+</ul>
+<b>mythsubtitles</b> is able to support these media formats because it borrows
+a lot of code from MythTV and
+uses the MythTV versions of the ffmpeg libraries.
+You must install and compile the MythTV source in order to build <b>mythsubtitles</b>.
+<li>
+<b>cc2subtitles</b> does not depend on the MythTV source.
+<li>
+Both <b>cc2subtitles</b> and <b>mythsubtitles</b> use a library called
 <a href="http://zapping.sourceforge.net/doc/libzvbi/">libzvbi</a>
 (also known as <i>ZVBI - VBI Decoding Library</i>).
 libzvbi is part of the <a href="http://zapping.sourceforge.net/">Zapping</a>
@@ -31,13 +70,14 @@ project, a TV viewer for the <a href="http://www.gnome.org/">Gnome</a> desktop.
 libzvbi is available as a debian package in the debian and ubuntu repositories, and probably many other repositories, too.
 <li>
 libzvbi supports PAL/SECAM Teletext, probably better than NTSC CC,
-so there's a good chance my little utility will work with Teletext, too.
+so there's a chance my tools will be able to convert Teletext to subtitles, too.
 I haven't tested it, but would be willing to,
-if I can get a hold of some PAL recordings that have VBI data.
+if I can get a hold of some PAL recordings.
 Or, perhaps someone else in PAL land would like to do the work?
 <li>
-It converts IVTV encoded VBI data into DVD subtitles.
-It takes advantage of the fact that libzvbi can produce .png (Portable Network Graphics)
+Both <b>mythsubtitles</b> and <b>cc2subtitles</b> convert closed caption data
+found in recordings into DVD subtitles.
+They take advantage of the fact that libzvbi can produce .png (Portable Network Graphics)
 renderings of CC/Teletext.
 An included bash script then uses spumux (part of dvdauthor) to
 convert the .png images into DVD subtitles.
@@ -46,16 +86,26 @@ that use spumux to encode text based subtitles.
 The results look like what you're used to seeing on your TV,
 including support for italics and special characters used in Spanish & French,
 as well as the musical note.
-Plus, it supports closed caption colors.
+Plus, libzvbi supports closed caption colors.
 <br>
 <i>Note: some special characters may require a <a href="#libzvbi.patch">patch for libzvbi</a>,
 if you are using a version older than libzvbi-0.2.27.
 </i>
 <li>
-I'm pretty sure it won't work if you like to cut commercials out of your recordings.
+I'm pretty sure my tools won't work if you like to cut commercials out of your recordings.
 That's because of the timestamp data I use to figure out where to add subtitles to recordings.
-I've worked around this problem by patching mytharchive's script, mythburn.py,
+My personal preference is to burn DVDs of recordings with as little manual intervention as possible.
+But I don't like to watch commericals, either.
+Instead of taking the time to cut commercials using MythTV, I have patched
+mytharchive's script, mythburn.py,
 to add chapter marks at the commercial marks found by mythcommflag.
+As a result, I can easily skip forward over commercials when I play my recordings on a DVD player.
+If mythcommflag didn't get it quite right, I can rewind as needed.
+<li>
+This package includes a bash shell script, <b>myburn</b>, which puts all the pieces together to produce DVDs with closed captions converted to subtitles.
+All that's required to burn a DVD is to edit a mytharchive job file,
+mydata.xml, listing the recordings you want to burn,
+load a blank DVD in your DVD burner, then run <b>myburn</b>.
 </ul>
 Here are some example screen snapshots:
 <p>
@@ -103,36 +153,28 @@ here it is:
 </tr>
 <tr>
 <td>
-<a href="cc2subtitles-0.5.tar.gz">cc2subtitles-0.5.tar.gz
+<a href="cc2subtitles-0.6.tar.gz">cc2subtitles-0.6.tar.gz
 </a></td>
 <td>
-2009-02-02
+2009-06-17
 </td>
-<td>558 Kbytes</td>
+<td>583 KiB</td>
 <td>
 <ul>
 <li>
-Use timestamps from video stream instead of ivtv's VBI stream.
-<br>
-Seems that ivtv 1.1.0 doesn't provide valid timestamps, unlike
-ivtv 1.0.0.
+Added mythsubtitles, an alternative to cc2subtitles.
+Mythsubtitles supports more media file formats than cc2subtitles,
+but requires that MythTV source be installed and built.
 <li>
-Added mythburn patch for mythtv 0.21.
-Tested with mythtv-0.21.0+fixes18207.
+Added stripivtv, a utility that strips the private data stream
+containing VBI data from recordings captured by the ivtv and cx18
+drivers.
 <li>
-Added libzvbi patch to fix occasional core dump.
-<br>
-Tested with zvbi-0.2.31, but problem was there in older versions.
+Added mytranscode, a shell script that transcodes ATSC/QAM recordings
+into NTSC DVD compatible format.
 <li>
-Added options to use fifos and create ISO.
-<li>
-If MYTHARCHIVEDIR or MYTHARCHIVETMP don't exist, it's now a warning
-instead of an error.
-<br>
-This makes it easier to install and use cc2subtitles when
-MythTv is not installed.
-<li>
-Added decodempeg, an MPEG2 decoder.
+Fixed problems compiling on 64 bit platform and regression tested
+on 32 bit platform.
 </ul>
 </td>
 </tr>
@@ -175,6 +217,47 @@ A copy of this documentation.
 doc/mytheme
 <dd>
 The mytharchive theme I use to burn DVDs.
+<dt>
+doc/ffmpeg_dvd_ntsc.xml
+<dd>
+The encoding profile I use to burn DVDs.
+It containes a modification of the LP encoding profile to transcode
+media files that need transcoding to a DVD compatible format.
+The transcoded files will have a resolution of 720x480 and
+about 4 hours worth of recordings will fit on a single sided DVD.
+To use it instead of the profile provided by MythTV, you need to
+install this file in $HOME/.mythtv/MythArchive/ffmpeg_dvd_ntsc.xml
+<dt>
+src/decodempeg
+<dd>
+A utility that decodes MPEG-PS streams, printing information found in packet headers.
+<dt>
+src/stripivtv
+<dd>
+A utility that that strips the private data stream
+containing VBI data from recordings captured by the ivtv and cx18
+drivers.
+The output can be used to burn DVDs using a patched version of dvdauthor
+without all the CPU intensive muxing and demuxing that's done by mythburn.py.
+See
+<a href="http://ivtvdriver.org/index.php/Howto:ivtv_for_dvdauthor">Howto: ivtv for dvdauthor</a> for more information.
+<dt>
+src/mytranscode
+<dd>
+A shell script that transcodes ATSC/QAM recordings into NTSC DVD compatible
+format using mencoder.
+I had no end of problems trying to do this with ffmpeg, which is what
+mytharchive uses on recordings that are not DVD compatible.
+Fortunately, I found an example that worked here:
+<a href="http://www.mplayerhq.hu/DOCS/HTML/en/menc-feat-vcd-dvd.html">
+11.8. Using MEncoder to create VCD/SVCD/DVD-compliant files
+</a>.
+When recordings are transcoded, closed caption data is lost, so mytranscode
+saves the original file with a .orig file extension 
+so it can be used to convert closed captions to subtitles at a later time.
+The <b>myburn</b> script checks for these .orig files and scans them for
+closed captions instead of the transcoded files.
+
 </dl>
 
 <hr>
@@ -185,7 +268,7 @@ Installation instructions
 <dt><b>Install libzvbi (without patch)</b>
 <dd>
 <p>
-Before you can build <b>cc2subtitles</b>,
+Before you can build the <b>cc2subtitles</b> or <b>mythsubtitles</b> programs,
 you must either install binary libzvbi development packages
 or install and build the source package with
 <a href="#libzvbi.patch">patches/libzvbi*.patch</a>.
@@ -242,6 +325,49 @@ Recompile and install
 # make install
 </pre>
 </ol>
+<p>
+<dt><b>Install and compile MythTV source</b>
+<dd>
+<p>
+If you want to extract closed captions from the widest variety of recordings
+using <b>mythsubtitles</b>,
+you will first need to install and compile MythTV.
+If you don't, you will only be able to extract closed catptions from recordings made with the ivtv driver and the analog inputs supported by the cx18 driver
+using <b>cc2subtitles</b>.
+<p>
+<i>
+Note: These instructions are minimal and apply to Debian based distributions, only.
+The web is full of more detailed information on how to build source packages,
+not only for Debian based distributions (e.g. Ubuntu), but others, too.
+</i>
+<p>
+<ol>
+<li>
+Install and compile the source package, <b>mythtv</b>:
+<pre>
+# apt-get source mythtv
+# apt-get build-dep mythtv
+# apt-get --compile source mythtv
+</pre>
+<code>apt-get --compile</code> will first patch and configure the source
+so that, when it is compiled,
+the results will be the same as the binary package.
+<p>
+You do not need to install the .deb packages produced by this command.
+In fact, you can remove them.
+You just need to remember where the package was compiled.
+<p>
+<li>
+Create a symlink to the source:
+<pre>
+# ln -s <i>mythtv-source-directory</i> /usr/src/mythtv
+</pre>
+This step makes it easier to configure the cc2subtitles package, because
+/usr/src/mythtv is where cc2subtitles expects to find the MythTV source.
+You don't have to create the symlink, but if you don't, you will need to
+use the --with-mythtv-src argument when you configure cc2subtitles.
+</ol>
+<p>
 <dt>
 <b>Install cc2subtitles</b>
 <dd>
@@ -256,14 +382,16 @@ Download and unpack cc2subtitles
 <li>
 Configure cc2subtitles
 <pre>
-# cd cc2subtitles-0.5
+# cd cc2subtitles-0.6
 # ./configure \
     --with-mytharchive-tmp=<i>path-to-mytharchive-temp-dir</i> \
     --with-mytharchive-dir=<i>path-to-mytharchive-install-dir</i> \
     --with-dev-dvd=<i>dvd-device</i>
 </pre>
-These options configure the bash script, myburn,
+Most options configure the bash script, <b>myburn</b>,
 to match your environment and preferences.
+One notable exception is <code>--with-mythtv-src</code>, needed to build <b>mythsubtitles</b>.
+Following are descriptions of configure options unique to the <b>cc2subtitles</b> package:
 <p>
 <dl>
 <dt>
@@ -337,10 +465,27 @@ in your <code>Myth Archive Temp Directory</code>.
 <p>
 Optional, the default is NOT to create an ISO.
 <p>
+<dt>
+<code>
+--with-mythtv-src=<i>path-to-mythtv-source</i>
+</code>
+<dd>
+Set the value to the directory where you have installed and compiled the mythtv source.
+<p>
+<p>
+Optional, the default value is: <code>/usr/src/mythtv</code>
+If the directory doesn't contain mythfrontend, it treats it as a warning and configures <b>myburn</b> to use <b>cc2subtitles</b>, not <b>mythsubtitles</b>.
+<p>
 </dl>
 <li>
 Build and install
 <pre>
+# make
+# make install
+</pre>
+If you did not install and compile MythTV source, you should instead use these commands:
+<pre>
+# cd src
 # make
 # make install
 </pre>
@@ -355,7 +500,7 @@ MythArchive Settings are found in mythfrontend:
 <p>
 Utilities/Setup -> Setup -> Media Settings -> Archive Files Settings
 <p>
-"Use FIFOs" is the 4th option on Page 2.
+"Use FIFOs" is the 6th option on Page 2.
 <p>
 If you don't do this, you will need an extra DVD's worth of available disk space
 in your <code>Myth Archive Temp Directory</code>.
@@ -463,7 +608,10 @@ As you can see, it took a long time, about 2.5 hours to burn a 4.4 GB DVD.
 FWIW, I was watching recordings the whole time.
 Plus, a recording was in progress, along with commerical flagging,
 for the first 1/2 hour.
-All this on a system with a 32 bit AMD Sempron 3100+.
+All this on a system with a 32 bit AMD Sempron 3100+ and 1 GB RAM.
+<p>
+FWIW, I now have a new system that can burn a 4 GB DVD in about 34 minutes.
+The new system has a 64 bit AMD X2 4850e CPU and 4 GB RAM.
 <p>
 </dl>
 
@@ -493,19 +641,29 @@ in spumux.xml.
 If no closed captions are found in the TV recording,
 cc2subtitles will remove spumux.xml and exit with a non-zero code.
 <h3>
+<a name="mythsubtitles">
+mythsubtitles/mythsubtitles
+</h3>
+This executable program adds support for a wider range of media formats as described at the top of this page.
+It is a backward compatible replacement for the cc2subtitles program.
+However, it also adds a dependency on the MythTV source.
+<h3>
 <a name="myburn">
 src/myburn
 </h3>
-This bash script is a wrapper around mythburn.py, which does most of the work
-for mytharchive, as well as cc2subtitles.
-I prefer to use it from the command line rather than mytharchive,
-because I can still watch recordings with mythfrontend while
+This bash script is a wrapper around mythsubtitles/cc2subtitles and
+mythburn.py (part of the mytharchive plug-in), which does most of the work.
+I prefer to use myburn from the command line rather than
+mythfrontend/mytharchive,
+because I find it easier to edit the job file from a ssh login than use the
+mythfrontend GUI and
+I can still watch recordings with mythfrontend while
 this script is busy prepping files to burn to DVD.
-It assumes you have set up a mytharchive job file,
+<b>myburn</b> assumes you have set up a mytharchive job file,
 <code><i>path-to-mytharchive-temp-dir</i>/config/mydata.xml</code>,
 described below.
 <p>
-myburn automates the process of:
+<b>myburn</b> automates the process of:
 <ol>
 <li>
 transcoding, demuxing, and remuxing recordings and videos into a DVD compatible format.
@@ -519,7 +677,7 @@ tweaking dvdauthor.xml to match my personal tastes, using tweakdvdxml.py
 for each recording:
 <ol type="a">
 <li>
-executing cc2subtitles to render closed captions as images and create spumux.xml.
+executing mythsubtitles or cc2subtitles to render closed captions as images and create spumux.xml.
 <li>
 executing spumux to convert the images into subtitles and embedding them into a new mpeg file.
 </ol>
@@ -541,7 +699,7 @@ An example mytharchive job file.
 When you use mytharchive to burn DVDs, it creates the job file,
 <code><i>path-to-mytharchive-temp-dir</i>/config/mydata.xml</code>.
 The job file is the way mytharchive tells it's helper script, mythburn.py, what recordings and videos you want to burn to DVD.
-The file also stores the choices you make on whether to create an ISO image
+The file also contains the choices you make on whether to create an ISO image
 or to burn a DVD. Here's a copy of the example:
 <pre>
 &lt;!DOCTYPE mythburn>
@@ -587,7 +745,7 @@ In mythtv-0.21, the filename attribute is the file's full path name.
 In my case, the file, <code>1007_20080217185500.mpg</code> can be found in
 <code>/video/mythtv/recordings</code> where <code>/video/mythtv</code> is
 my storage directory and <code>recordings</code> is the subdirectory that
-contains recordings made by mythtv.
+contains recordings made by MythTV.
 I can usually figure out what recording I want by listing the contents of
 the directory.
 The file names are formatted as follows:
@@ -676,7 +834,7 @@ If you want growisofs to first erase the DVD, set this attribute to 1.
 Otherwise, set it to 0.
 The myburn script checks this attribute.
 If it is non-zero, it calls growisofs with the option, -use-the-force-luke,
-which improves the chances that growisofs will succeed burning
+which improves the chances that growisofs will successfully burn
 a rewritable DVD.
 
 <dt> <code>createiso</code> <dd>
@@ -749,7 +907,7 @@ Originally, mythburn.py used the start time of a program,
 not the time when the recording started,
 and it didn't display when the recording ended.
 So you couldn't tell, looking at the menu, how long any title runs.
-I changed it to display when recording started and ended.
+I changed it to display when a recording started and ended.
 </ol>
 If you do not patch mythburn.py, and want to switch between using mytharchive
 and myburn, you may need to work around problem 3.
@@ -793,28 +951,36 @@ instead of going back to the main menu after playing each title.
 It moves the main menu from the root menu to the titleset menu.
 That's because it's most convenient with my universal remote.
 </ul>
-I have only tested this script with dvdauthor.xml files created with
+I have only tested tweakdvdxml.py with dvdauthor.xml files created with
 my own theme.
 So the myburn script only executes it when the theme specified in mydata.xml is "mytheme".
 So far, I have found one problem with tweakdvdxml.py.
-If you burn a DVD with both TV recordings and imported videos,
-you may not have sound when you play back some titles.
-It depends on whether the imported videos use the same audio format as the TV recordings.
-If they're different, you'll lose sound in the titles that have a different audio format than the first title.
-If they're the same, all should be well.
+If you burn a DVD with a mix of TV recordings from different video sources and/or imported videos,
+it may seem as though there is no sound when you play back some titles.
+It depends on whether all media files use the same audio format.
+For example, those recorded by MPEG-2 hardware encoders will have MP2 audio,
+while titles ripped from DVDs will have AC3 audio.
+If they're different, you'll have to tell your DVD player to change
+the audio track when playing titles that have a different audio format
+than the first title.
+If all media files have the same audio format, all should be well.
+None of this will matter to you if you don't use "mytheme."
+If you want to try "mytheme" and tweakdvdxml.py, you will have to copy this package's doc/mytheme directory to 
+<code><i>path-to-mytharchive-install-dir</i>/themes/mytheme</code>.
 <p>
-Some suggestions:
+If you decide to use "mytheme," here are some suggestions:
 <ol>
 <li>
-Don't burn DVDs with a mix of TV recordings and imported videos.
+Don't burn DVDs with a mix of TV recordings from different video sources and/or imported videos.
 <p>
 <li>
-Rerun dvdauthor with the untweaked dvdauthor_orig.xml, e.g.:
+If you want to create a DVD with a mix of recordings and videos,
+rerun dvdauthor with the untweaked dvdauthor_orig.xml, e.g.:
 <pre>
 dvdauthor -x <i>path-to-mytharchive-temp-dir</i>/work/dvdauthor_orig.xml
 </pre>
 <li>
-Use a theme other tham "mytheme" when burning a mix of recordings and videos.
+Use a theme other than "mytheme" when burning a mix of recordings and videos.
 </ol>
 
 <h3>
@@ -841,7 +1007,8 @@ The bug has been there since I started this project.
 It was difficult to debug since valgrind and gdb watchpoints were no help.
 I finally got serious about tracking it down when I upgraded to mythtv-0.21
 and needed to make more changes to cc2subtitles.
-
+For what it's worth, my patch has been accepted by the zvbi project,
+so it shouldn't be needed with versions after 0.2.31.
 <hr>
 <h2>
 Closing Remarks
@@ -862,10 +1029,10 @@ Can you use the package in its current form?
 <br>
 If not, why not?
 <br>
-Are you using a newer version of mythtv?
+Are you using a newer version of MythTV?
 <br>
 It doesn't have a pretty GUI and requires
-some knowledge of mythtv to configure and use effectively.
+some knowledge of MythTV to configure and use effectively.
 Is that a show stopper?
 <li>
 Of course, if you like it, I welcome positive feedback.

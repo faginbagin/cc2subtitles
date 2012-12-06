@@ -1,5 +1,8 @@
 #include <unistd.h>
 #include <signal.h>
+#include <string.h>
+#include <errno.h>
+
 #include "mpg2util.h"
 
 #define SECONDS 5
@@ -27,7 +30,7 @@ decodeStartCode(FILE* fp)
             if (first)
             {
                 fprintf(stderr, "Warning: start_code_prefix not found at pos=%lld, will search for %d seconds\n",
-                    ftello(fp)-1, SECONDS);
+                    (long long)ftello(fp)-1, SECONDS);
                 first = 0;
                 signal(SIGALRM, catchsignal);
                 alarm(SECONDS);
@@ -57,7 +60,7 @@ decodeStartCode(FILE* fp)
     if (caughtsignal)
     {
         fprintf(stderr, "Can't find start_code after %d seconds, pos=%lld, giving up\n",
-            SECONDS, ftello(fp));
+            SECONDS, (long long)ftello(fp));
         alarm(0);
         caughtsignal = 0;
         return EOF;
@@ -68,7 +71,7 @@ decodeStartCode(FILE* fp)
         // clear alarm
         alarm(0);
         caughtsignal = 0;
-        fprintf(stderr, "Finally found start_code=%#x at pos=%lld\n", c, ftello(fp)-4);
+        fprintf(stderr, "Finally found start_code=%#x at pos=%lld\n", c, (long long)ftello(fp)-4);
     }
     return c;
 }
@@ -111,7 +114,7 @@ decodeTimeStamp(FILE* fp, unsigned char flags)
     if (decodeFlags != flags)
     {
         fprintf(stderr, "PES_header: pos=%lld: Expected timestamp flags=%#x, found %#x\n",
-            ftello(fp)-5, flags, decodeFlags);
+            (long long)ftello(fp)-5, flags, decodeFlags);
         return (unsigned long long)EOF;
     }
 
@@ -119,7 +122,7 @@ decodeTimeStamp(FILE* fp, unsigned char flags)
      || (buf[4] & 0x01) != 0x01)
     {
         fprintf(stderr, "PES_header: pos=%lld: Marker bits in timestamp are not 1\n",
-            ftello(fp)-5);
+            (long long)ftello(fp)-5);
         return (unsigned long long)EOF;
     }
 
@@ -162,7 +165,7 @@ decodeClock(unsigned char* buf, SystemClock* clock, off_t pos)
      || (buf[4] & 0x04) != 0x04 || (buf[5] & 0x01) != 0x01)
     {
         fprintf(stderr, "decodeClock: pos=%lld: Marker bits in clock are not 1\n",
-            pos);
+            (long long)pos);
         return EOF;
     }
 
@@ -177,6 +180,53 @@ decodeClock(unsigned char* buf, SystemClock* clock, off_t pos)
     // Exract clock->extension
     clock->extension = ((unsigned short)buf[4] & 0x03) << 7;
     clock->extension += ((unsigned short)buf[5] & 0xfe) >> 1;
+
+    return 0;
+}
+
+int
+writeStartCode(int c, FILE* fpout)
+{
+    unsigned char buf[4];
+    buf[0] = buf[1] = 0;
+    buf[2] = 1;
+    buf[3] = c;
+    if (fwrite(buf, 4, 1, fpout) != 1)
+    {
+        fprintf(stderr, "writeStartCode: write failed: %s\n", strerror(errno));
+        return EOF;
+    }
+    return 0;
+}
+
+int
+copyBytes(int len, FILE* fp, FILE* fpout)
+{
+    unsigned char buf[2048];
+
+    while (len > 0)
+    {
+        int copy = (len > sizeof(buf) ? sizeof(buf) : len);
+        int rd = fread(buf, 1, copy, fp);
+        if (rd <= 0)
+        {
+            fprintf(stderr, "copyBytes: read failed: %s\n", strerror(errno));
+            return EOF;
+        }
+        if (rd < copy)
+        {
+            fprintf(stderr, "copyBytes: read %d bytes, expected %d\n", rd, copy);
+        }
+        if (fwrite(buf, rd, 1, fpout) != 1)
+        {
+            fprintf(stderr, "copyBytes: write failed: %s\n", strerror(errno));
+            return EOF;
+        }
+        if (rd < copy)
+            break;
+
+        len -= rd;
+    }
 
     return 0;
 }

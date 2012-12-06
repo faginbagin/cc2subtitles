@@ -1,3 +1,18 @@
+2009-06-17  Helen Buus  <mythtv@hbuus.com>
+
+	* Release 0.6.
+
+	* Added mythsubtitles, an alternative to cc2subtitles.
+	  Mythsubtitles supports more media file formats than cc2subtitles,
+	  but requires that mythtv source be installed and built.
+	* Added stripivtv, a utility that strips the private data stream
+	  containing VBI data from recordings captured by the ivtv and cx18
+	  drivers.
+	* Added mytranscode, a shell script that transcodes ATSC/QAM recordings
+	  into NTSC DVD compatible format.
+	* Fixed problems compiling on 64 bit platform and regression tested
+	  on 32 bit platform.
+
 2009-02-02  Helen Buus  <mythtv@hbuus.com>
 
 	* Release 0.5.

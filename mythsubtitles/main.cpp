@@ -6,13 +6,11 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include "PS_pack.h"
-#include "PES_packet.h"
-#include "vbi.h"
+#include "Decoder.h"
 
-int decode();
+extern int decode();
 
-static const char* shortOpts = "i:l:vp:P:x:w:h:s:f:";
+static const char* shortOpts = "i:l:vp:P:x:f:";
 
 static struct option longOpts[] =
 {
@@ -24,7 +22,6 @@ static struct option longOpts[] =
     { "xml",    required_argument,  0,  'x' },
     { "width",  required_argument,  0,  'w' },
     { "height", required_argument,  0,  'h' },
-    { "skip",   required_argument,  0,  's' },
     { "fudge",  required_argument,  0,  'f' },
 };
 
@@ -33,8 +30,8 @@ usage(const char* prog)
 {
     fprintf(stderr, "Usage: %s [option ...]\n", prog);
     fprintf(stderr, "Valid options are:\n\
--i, --in input.mpg  Input MPEG2 file containing ivtv vbi stream\n\
-                    Default: stdin\n\
+-i, --in input.mpg  Input media file containing closed captions\n\
+                    Required\n\
 -l, --log logfile   Log output file\n\
                     Default: stdout\n\
 -v, --verbose       Increment verbosity\n\
@@ -50,17 +47,20 @@ usage(const char* prog)
                     Default: 1 (CC1)\n\
 -x, --xml spumux.xml    XML file created for input to spumux\n\
                     Default: spumux.xml\n\
--w, --width width   Frame width\n\
+-w, --width width   DVD output frame width (not input media width)\n\
                     Default: 720\n\
--h, --height height Frame height\n\
+-h, --height height DVD output frame height (not input media height)\n\
                     Default: 480 for NTSC, 576 for PAL\n\
--s, --skip count    Skip the first count VBI blocks\n\
-                    Default: 0\n\
+-f, --fudge factor  Multiply subtitle timestamps by this value\n\
+                    For example, if transcoding changes video length from\n\
+                    1 hour to 1 hour and 10 seconds, use 3610/3600 = 1.00277\n\
+                    Default: 1.00293 for nuv recordings\n\
+                             1.0 for all other recordings\n\
 ");
 }
 
 int verbose = 0;
-FILE* fpin = stdin;
+const char* infile = 0;
 FILE* fplog = stdout;
 const char* xmlfile = "spumux.xml";
 FILE* fpxml;
@@ -70,7 +70,7 @@ int   pageno = 1;
 // when we get the first vbi page event in vbi.cpp
 int   width = 0;
 int   height = 0;
-int   skipVBI;
+double fudgeFactor = (double)0.0;
 
 int
 main(int argc, char** argv)
@@ -84,11 +84,7 @@ main(int argc, char** argv)
         switch (c)
         {
             case 'i':
-                if ((fpin = fopen(optarg, "r")) == NULL)
-                {
-                    fprintf(stderr, "Cannot open %s: %s\n", optarg, strerror(errno));
-                    exit(1);
-                }
+                infile = strdup(optarg);
                 break;
             case 'l':
                 unlink(optarg);
@@ -117,19 +113,22 @@ main(int argc, char** argv)
             case 'h':
                 height = atoi(optarg);
                 break;
-            case 's':
-                skipVBI = atoi(optarg);
-                break;
             case 'f':
-                // fudgefactor not implemented,
-                // only here to maintain cmdline compatibility
-                // wih mythsubtitles
+                fudgeFactor = atof(optarg);
                 break;
             default:
                 usage(argv[0]);
                 exit(1);
                 break;
         }
+    }
+
+    // Make sure infile is defined
+    if (!infile)
+    {
+        fprintf(stderr, "Required input file missing\n");
+        usage(argv[0]);
+        exit(1);
     }
 
     // Open spumux XML file
@@ -155,52 +154,11 @@ main(int argc, char** argv)
 int
 decode()
 {
-    PS_pack pack;
-    PES_packet pes;
-    VBIDecoder vbi;
-    int c = 0;
-
-    while (c != EOF)
-    {
-        if (c == 0)
-            c = decodeStartCode(fpin);
-
-        if (c == PS_pack_start_code)
-        {
-            pack.reset();
-            pack.stream_id = c;
-            c = pack.decode(fpin, verbose > 2);
-            if (c == EOF)
-                break;
-            if (verbose > 2)
-                pack.print(fplog);
-        }
-        else if (c >= program_stream_map)
-        {
-            pes.reset();
-            pes.stream_id = c;
-            c = pes.decode(fpin, verbose > 2 || pes.stream_id == private_stream_1 || pes.stream_id == video_stream_0);
-            if (c == EOF)
-                break;
-            if (verbose > 2)
-                pes.print(fplog);
-
-            vbi.checkTime(pes);
-            if (pes.stream_id == private_stream_1)
-                vbi.decode(pes);
-        }
-        else if (c == MPEG_program_end_code || c == EOF)
-        {
-            break;
-        }
-        else
-        {
-            // We must have an invalid stream id
-            fprintf(stderr, "main: pos=%lld: Invalid stream_id=%#x\n",
-                (long long)ftello(fpin)-4, c);
-            c = 0;
-        }
-    }
-
-    return 0;
+    Decoder* dec = Decoder::GetDecoder();
+    if (!dec)
+        return -1;
+    int ret = dec->decode();
+    delete dec;
+    return ret;
 }
+

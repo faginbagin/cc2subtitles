@@ -27,4 +27,7 @@ int decodeStartCode(FILE* fp);
 unsigned long long decodeTimeStamp(FILE* fp, unsigned char flags);
 int decodeClock(unsigned char* buf, SystemClock* clock, off_t pos);
 
+int writeStartCode(int c, FILE* fpout);
+int copyBytes(int len, FILE* fpin, FILE* fpout);
+
 #endif /* MPG2UTIL_H */

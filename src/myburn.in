@@ -39,13 +39,18 @@ MYTHARCHIVEDIR=@MYTHARCHIVEDIR@
 
 # The name of your dvd device.
 # The configure script should have set this.
-DEVDVD=@DEVDVD@
+# But you can override it by setting the environment variable.
+DEVDVD=${DEVDVD-@DEVDVD@}
 
 # Should FIFOs (named pipes) be used to reduce disk space requirements?
-USEFIFOS=@USEFIFOS@
+# The configure script should have set this.
+# But you can override it by setting the environment variable.
+USEFIFOS=${USEFIFOS-@USEFIFOS@}
 
 # Should we create an ISO image?
-CREATEISO=@CREATEISO@
+# The configure script should have set this.
+# But you can override it by setting the environment variable.
+CREATEISO=${CREATEISO-@CREATEISO@}
 
 # Get the theme name from mydata.xml
 eval `grep '<job ' $MYTHARCHIVETMP/config/mydata.xml | sed -e 's|.*<job ||' -e 's| *>||'`
@@ -70,6 +75,23 @@ else
     RUNTWEAKDVDXML=false
 fi
 
+# Sometimes, when mythburn.py runs mythtranscode, mythtranscode fails with
+# this error:
+# ICE default IO error handler doing an exit(), pid = <pid>, errno = 32
+# Turns out it happens just as mythtranscode is about to exit successfully,
+# Something goes wrong when Qt's QApplication's destructor is called, which
+# destroys a QSessionManager, which calls SmcCloseConnection,
+# which calls IceFlush, which calls IceWrite, etc.,
+# which causes a SIGPIPE signal.
+# Why a non-gui application should be doing anything related to
+# session management is beyond me. I suspect a Qt bug that doesn't remember
+# when a QApplicatiuon was instantiated as a non-gui app.
+# What's interesting is that the problem occurs when you run this script
+# from an xterm window but not when you run it from a remote shell, like ssh.
+# The difference is whether the environment variable, SESSION_MANAGER, is set.
+# Unsetting this variable prevents the problem.
+unset SESSION_MANAGER
+
 processFile()
 {
     dir=$1
@@ -78,9 +100,36 @@ processFile()
     [ -f $dir/streaminfo_orig.xml ] && streaminfo=$dir/streaminfo_orig.xml
     recording=`grep filename= $streaminfo | \
         sed -e 's/.*filename="//' -e 's/".*//'`
+
+    # Check if there's an .orig recording
+    # If so, the recording has been transcoded and the .orig file
+    # is the one that still has closed captions
+    if [ -f $recording.orig ]
+    then
+        recording=$recording.orig
+        # Generate streaminfo for the original file
+        mytharchivehelper -i $recording $dir/streaminfo.xml.orig 0 && \
+            streaminfo=$dir/streaminfo.xml.orig
+    fi
+
+    # Extract durations for both original file and massaged file
+    fudgeFactor=0
+    # If the type is nuv, the duration info is useless
+    type=`grep type= $streaminfo | \
+        sed -e 's/.*type="//' -e 's/".*//'`
+    if [ "$type" != nuv ]
+    then
+        origduration=`grep duration= $streaminfo | \
+            sed -e 's/.*duration="//' -e 's/".*//'`
+        newduration=`grep duration= $dir/streaminfo.xml | \
+            sed -e 's/.*duration="//' -e 's/".*//'`
+        fudgeFactor=`echo $newduration $origduration |awk '{print $1 / $2 }'`
+        [ $? != 0 ] && fudgeFactor=0 # Let mythsubtitles set default value
+    fi
+
     mkdir -p $dir/subs
 
-    date "+%F %T myburn[$$] $dir: Checking `basename $recording` for CC/Teletext"
+    date "+%F %T myburn[$$] $dir: Checking `basename $recording` for CC/Teletext fudgeFactor=$fudgeFactor"
 
     # Scan the file, looking for closed captions
     # If any are found, they'll be converted to .png images
@@ -90,12 +139,8 @@ processFile()
     # Note: LD_LIBRARY_PATH is set in case you have installed a
     # patched libzvbi library with the same prefix as
     # cc2subtitles.
-    # We will try a second time with a skip count, in case there's
-    # an "End of Caption" sequence at the beginning throwing things off.
     LD_LIBRARY_PATH=@libdir@ \
-        cc2subtitles -i $recording -p $dir/subs/ -x $dir/spumux.xml || \
-    LD_LIBRARY_PATH=@libdir@ \
-        cc2subtitles -s 10 -i $recording -p $dir/subs/ -x $dir/spumux.xml || \
+        @SUBTITLE_PROG@ -i $recording -p $dir/subs/ -x $dir/spumux.xml -f $fudgeFactor || \
         return
 
     # the final.mpg built by mythburn is renamed to final_orig.mpg

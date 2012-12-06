@@ -5,16 +5,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "PES_packet.h"
 #include "vbi.h"
 
-#define IVTV_SLICED_TYPE_TELETEXT       0x1     // Teletext (uses lines 6-22 for PAL)
-#define IVTV_SLICED_TYPE_CC             0x4     // Closed Captions (line 21 NTSC)
-#define IVTV_SLICED_TYPE_WSS            0x5     // Wide Screen Signal (line 23 PAL)
-#define IVTV_SLICED_TYPE_VPS            0x7     // Video Programming System (PAL) (line 16)
-
 extern int verbose;
-extern FILE* fpin;
+extern const char* infile;
 extern FILE* fplog;
 extern char* xmlfile;
 extern FILE* fpxml;
@@ -22,15 +16,7 @@ extern char* prefix;
 extern int pageno;  // Desired caption/teletext page
 extern int width;   // Frame width
 extern int height;  // Frame height
-
-extern int skipVBI;
-
-typedef union
-{
-    uint32_t words[2];
-    uint64_t llword;
-    fd_set   bits;
-} ScanlineMask;
+extern double fudgeFactor;
 
 VBIDecoder::VBIDecoder()
 {
@@ -58,7 +44,7 @@ VBIDecoder::VBIDecoder()
     textBuf = new char[textSize];
 
     // Write the xml opening tags
-    fprintf(fpxml, "<subpictures>\n<stream>\n");
+    fprintf(fpxml, "<subpictures>\n<stream>\n<!-- %s -->\n", infile);
 
     checkPageSize = 1;
 
@@ -77,6 +63,7 @@ VBIDecoder::~VBIDecoder()
     // Write the xml closing tags, and close the file
     fprintf(fpxml, "</stream>\n</subpictures>\n");
     fflush(fpxml);
+
     fclose(fpxml);
 
     if (fileIndex == 0)
@@ -90,168 +77,26 @@ VBIDecoder::~VBIDecoder()
         fflush(stderr);
         exit(1);
     }
+    delete[] fileName;
+    delete[] textBuf;
 }
 
 void
-VBIDecoder::checkTime(PES_packet& pes)
+VBIDecoder::checkTime(int64_t ts)
 {
-    // We used to get timestamps from the private data stream,
-    // but it seems the ivtv driver is no longer providing meaningful
-    // timestamps.
-    // So we'll get the timestamps from the video stream.
-    if (pes.stream_id == video_stream_0 && pes.PTS_DTS_flags != 0)
-    {
-        // If the decoding timestamp is provided, use it.
-        // Otherwise, use the presentation timestamp.
-        Timestamp* ts = &pes.PTS;
-        if (pes.PTS_DTS_flags == 3)
-            ts = &pes.DTS;
+    if (firstTimestamp.base == 0)
+        firstTimestamp.base = ts;
 
-        if (firstTimestamp.base == 0)
-            firstTimestamp = *ts;
-
-        // Check for arithmetic wrap around.
-        long long diff = ts->base - firstTimestamp.base;
-        if (diff < 0)
-            diff += 0x100000000LL;
-        currTimestamp.base = (unsigned long long) diff;
-    }
+    // Check for arithmetic wrap around.
+    int64_t diff = ts - firstTimestamp.base;
+    if (diff < 0)
+        diff += 0x100000000LL;
+    currTimestamp.base = diff;
 }
 
 void
-VBIDecoder::decode(PES_packet& pes)
+VBIDecoder::decode(vbi_sliced* sliced, int nslice)
 {
-    unsigned char* buf = pes.PES_packet_data;
-    int len = pes.PES_packet_data_length;
-    ScanlineMask mask;
-    unsigned char* ptr = buf + 4; // assume we'll find magic cookie
-    int i;
-    vbi_sliced sliced_array[36];
-    vbi_sliced* sliced = sliced_array;
-    vbi_sliced* sliced_end;
-
-    // Look for one of the magic cookies identifying this buffer
-    // as VBI data captured by the ivtv driver.
-    if (memcmp(buf, "itv0", 4) == 0)
-    { 
-        memcpy(&mask, ptr, 8);
-        ptr += 8;
-    }
-    else if (memcmp(buf, "ITV0", 4) == 0)
-    {
-        mask.words[0] = 0xffffffff;
-        mask.words[1] = 0xf;
-    }
-    else
-        return;
-
-    if (verbose > 1)
-        fprintf(fplog, "VBI: time=%.4f len=%d mask=%#llx\n",
-            (double)currTimestamp, len, (unsigned long long)mask.llword);
-
-    for (i = 0; i < 36; i++)
-    {
-        if (FD_ISSET(i, &mask.bits))
-        {
-            // We'll adjust the value of line later when we know the type
-            sliced->line = i;
-            sliced++;
-            FD_CLR(i, &mask.bits);
-        }
-        // Optimization, skip to next word when this word is zero
-        if (i < 32 && mask.words[0] == 0)
-            i = 31;
-        if (i >= 32 && mask.words[1] == 0)
-            break;
-    }
-    sliced_end = sliced;
-
-    sliced = sliced_array;
-    for (unsigned char* end = buf + len; ptr+43 <= end; ptr += 43, sliced++)
-    {
-        if (sliced == sliced_end)
-        {
-            if (verbose > 1)
-                fprintf(fplog, "Have more scanlines than bits in mask!\n");
-            break;
-        }
-        int type = *ptr;
-        // If line is < 18, it must be a field 1 scanline, just add 6
-        // Otherwise, it depends on ivtv type
-        if (sliced->line < 18)
-            sliced->line += 6;
-        else
-        {
-            if (type == IVTV_SLICED_TYPE_CC) // assume NTSC 525 scanlines
-            {
-                // 263 = 525/2+1
-                sliced->line += (263-18+6);
-            }
-            else // assume PAL 625 scanlines
-            {
-                // 313 = 625/2+1
-                sliced->line += (313-18+6);
-            }
-        }
-        // set sliced->id based on type
-        switch (type)
-        {
-        // Teletext (uses lines 6-22 for PAL)
-        case IVTV_SLICED_TYPE_TELETEXT:
-            sliced->id = VBI_SLICED_TELETEXT_B;
-            break;
-
-        // Closed Captions (line 21 NTSC)
-        case IVTV_SLICED_TYPE_CC:
-            sliced->id = VBI_SLICED_CAPTION_525;
-            break;
-
-        // Wide Screen Signal (line 23 PAL)
-        case IVTV_SLICED_TYPE_WSS:
-            sliced->id = VBI_SLICED_WSS_625; // VBI_SLICED_WSS_CPR1204?
-            break;
-
-        // Video Programming System (PAL) (line 16)
-        case IVTV_SLICED_TYPE_VPS:
-            sliced->id = VBI_SLICED_VPS;
-            break;
-        }
-
-        // Copy the ivtv data to the vbi_sliced structure
-        memcpy(sliced->data, ptr+1, 42);
-
-        if (verbose > 1)
-        {
-            fprintf(fplog, "   ivtv-type=%#x line=%d zvbi-id=%#x", type, sliced->line, sliced->id);
-            unsigned char* p = ptr+1;
-
-            int n = (type == IVTV_SLICED_TYPE_CC) ? 2 : 42;
-            for (i = 0; i < n; i++, p++)
-            {
-                fprintf(fplog, " %02x", *p);
-                int c = (*p) & 0x7f;
-                if (0x20 <= c && c <= 0x7f)
-                    fprintf(fplog, "(%c)", c);
-            }
-
-            putc('\n', fplog);
-        }
-    }
-    if (verbose && sliced != sliced_end)
-    {
-        fprintf(fplog, "Have fewer scanlines than bits in mask!\n");
-    }
-    if (skipVBI > 0)
-    {
-        if (verbose)
-            fprintf(fplog, "Skip\n");
-        skipVBI--;
-        return;
-    }
-
-    if (verbose > 1)
-        fflush(fplog);
-
     // vbi_decode is very fussy about timestamps
     // if the difference between the previous time and the current time
     // is less than 0.025or greater than 0.050, it will blank the page
@@ -259,9 +104,8 @@ VBIDecoder::decode(PES_packet& pes)
     // to ignore valid data just because the timestamps provided by
     // the ivtv driver don't quite match its expectations.
     decoderTimestamp += 0.03;
-    vbi_decode(decoder, sliced_array, sliced - sliced_array, decoderTimestamp);
+    vbi_decode(decoder, sliced, nslice, decoderTimestamp);
 }
-
 
 void
 VBIDecoder::eventHandler(vbi_event* event, void* user_data)
@@ -385,6 +229,7 @@ VBIDecoder::checkPage(vbi_page* pg)
         if (verbose)
             fprintf(fplog, "Blank page\n");
         flushPage(currTimestamp);
+        memcpy(&lastPage, pg, sizeof(lastPage));
         return;
     }
 
@@ -465,13 +310,13 @@ VBIDecoder::flushPage(Timestamp& endTS)
         if (startTimestamp.base < endTS.base)
         {
             fprintf(fpxml, "<spu start=");
-            writeTimestamp((double)startTimestamp);
+            writeTimestamp(((double)startTimestamp) * fudgeFactor);
             fprintf(fpxml, " end=");
-            writeTimestamp((double)endTS);
+            writeTimestamp(((double)endTS) * fudgeFactor);
             fprintf(fpxml, " image=\"%s\"", fileName);
             fprintf(fpxml, " xoffset=\"%d\"", xOffset);
             fprintf(fpxml, " yoffset=\"%d\"", yOffset);
-            fprintf(fpxml, ">\n<!--\n");
+            fprintf(fpxml, ">\n<!-- original timestamps=%.4f,%.4f\n", (double)startTimestamp, (double)endTS);
             fwrite(textBuf, textBytes, 1, fpxml);
             fprintf(fpxml, "\n--></spu>\n");
             if (ferror(fpxml))
@@ -522,6 +367,11 @@ VBIDecoder::setTeletext(vbi_page* pg)
     int pageHeight = pg->rows * 10;
     xOffset = (width - pageWidth) / 2;
     yOffset = (height - pageHeight) / 2;
+
+    // Make sure yOffset is even
+    if (yOffset & 1)
+        yOffset++;
+
     checkPageSize = 0;
     fprintf(fplog, "Teletext frame=%dx%d page=%dx%x xOffset=%d yOffset=%d\n",
         width, height, pageWidth, pageHeight, xOffset, yOffset);

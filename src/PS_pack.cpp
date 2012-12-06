@@ -1,5 +1,7 @@
 
+#include <string.h>
 #include <sys/types.h>
+
 #include "mpg2util.h"
 #include "stream_id.h"
 #include "PS_pack.h"
@@ -46,7 +48,7 @@ P_STD_params::decode(FILE* fp, bool detail)
     if ((buf[0] & 0xc0) != 0xc0)
     {
         fprintf(stderr, "P_STD_params: pos=%lld: Expected 11xxxxxx (base2), found %#x\n",
-            ftello(fp)-2, buf[0]);
+            (long long)ftello(fp)-2, buf[0]);
         return EOF;
     }
     buffer_bound_scale = (buf[0] & 0x20) >> 5;
@@ -112,7 +114,7 @@ PS_pack::decode(FILE* fp, bool detail)
         if (c != PS_pack_start_code)
         {
             fprintf(stderr, "PS_pack: pos=%lld: Expected stream_id=%#x, found %#x\n",
-                ftello(fp)-4, PS_pack_start_code, c);
+                (long long)ftello(fp)-4, PS_pack_start_code, c);
             return 0-c;
         }
         stream_id = c;
@@ -162,7 +164,7 @@ PS_pack::decode(FILE* fp, bool detail)
         if ((buf[0] & 0xc0) != 0x40)
         {
             fprintf(stderr, "PS_pack: pos=%lld: SCR bits don't match expected constants\n",
-                ftello(fp)-10);
+                (long long)ftello(fp)-10);
             return EOF;
         }
         // Extract system_clock_reference
@@ -179,7 +181,7 @@ PS_pack::decode(FILE* fp, bool detail)
         if ((buf[8] & 0x03) != 0x03)
         {
             fprintf(stderr, "PS_pack: pos=%lld: Expected 0x03 (marker bits) after program_mux_rate, found %#x\n",
-                ftello(fp)-2, buf[8] & 0x03);
+                (long long)ftello(fp)-2, buf[8] & 0x03);
             return EOF;
         }
         program_mux_rate = (unsigned int)buf[6] << (16-2);
@@ -255,7 +257,7 @@ PS_pack::decode(FILE* fp, bool detail)
          || (buf[4] & 0x20) != 0x20)
         {
             fprintf(stderr, "PS_pack: pos=%lld: System header bits don't match expected constants\n",
-                ftello(fp)-6);
+                (long long)ftello(fp)-6);
             return EOF;
         }
         // rate_bound[15..21]
@@ -303,13 +305,116 @@ PS_pack::decode(FILE* fp, bool detail)
     return c;
 }
 
+#ifdef comment
+static SystemClock prevSCR;
+static char prevSCRbuf[6];
+#endif
+
+int
+PS_pack::copy(FILE* fp, FILE* fpout)
+{
+    int c;
+    unsigned char buf[10];
+
+/*
+    pack_start_code 32  bslbf (00 00 01 ba)
+*/
+    if (stream_id != PS_pack_start_code)
+    {
+        // If someone else hasn't already decoded
+        // a stream_id == PS_pack_start_code,
+        // get it and validate it.
+        if ((c = decodeStartCode(fp)) == EOF)
+            return EOF;
+
+        // Validate c
+        if (c != PS_pack_start_code)
+        {
+            fprintf(stderr, "PS_pack: pos=%lld: Expected stream_id=%#x, found %#x\n",
+                (long long)ftello(fp)-4, PS_pack_start_code, c);
+            return 0-c;
+        }
+        stream_id = c;
+    }
+
+    startPos = ftello(fpout);
+    if (writeStartCode(stream_id, fpout) != 0)
+        return EOF;
+
+    // Copy the next 10 bytes so we know how many stuffing bytes to copy
+    if (fread(buf, 10, 1, fp) != 1)
+        return EOF;
+
+#ifdef comment
+    // Extract system_clock_reference
+    if (decodeClock(buf, &system_clock_reference, ftello(fp)-10) == EOF)
+        return EOF;
+    // If it's less than the previous value, replace it.
+    if (system_clock_reference.toSeconds() < prevSCR.toSeconds())
+    {
+        memcpy(buf, prevSCRbuf, sizeof(prevSCRbuf));
+    }
+    else
+    {
+        memcpy(prevSCRbuf, buf, sizeof(prevSCRbuf));
+        prevSCR.base = system_clock_reference.base;
+        prevSCR.extension = system_clock_reference.extension;
+    }
+#endif
+
+    fwrite(buf, 10, 1, fpout);
+
+/*
+    reserved    5   bslbf
+    pack_stuffing_length    3   uimsbf
+*/
+    pack_stuffing_length = buf[9] & 0x07;
+
+/*
+    for (i=0;i<pack_stuffing_length;i++) {      
+        stuffing_byte   8   bslbf
+    }       
+*/
+    // Copy any stuffing bytes
+    if (pack_stuffing_length > 0)
+    {
+        if (fread(buf, pack_stuffing_length, 1, fp) != 1)
+            return EOF;
+        fwrite(buf, pack_stuffing_length, 1, fpout);
+    }
+
+/*
+    if (nextbits() == system_header_start_code)  {      
+        system_header ()        
+    }       
+*/
+
+/*
+    system_header_start_code    32  bslbf
+    header_length   16  uimsbf
+*/
+    c = decodeStartCode(fp);
+    if (c == EOF || c != system_header_start_code)
+        return c;
+    writeStartCode(c, fpout);
+
+    if (fread(buf, 2, 1, fp) != 1)
+        return EOF;
+    header_length = buf[0] << 8;
+    header_length += buf[1];
+    fwrite(buf, 2, 1, fpout);
+
+    // Copy system header
+    return copyBytes(header_length, fp, fpout);
+}
+
 void
 PS_pack::print(FILE* fp)
 {
     fprintf(fp, "PS_pack: pos=%lld\n\
 \tsystem_clock_reference=%.5f (base=%lld,extension=%d)\n\
 \tprogram_mux_rate=%d\tpack_stuffing_length=%d\n",
-        startPos, system_clock_reference.toSeconds(),
+        (long long)startPos, system_clock_reference.toSeconds(),
         system_clock_reference.base, system_clock_reference.extension,
         program_mux_rate,   pack_stuffing_length);
 

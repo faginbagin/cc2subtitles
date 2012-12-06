@@ -9,13 +9,14 @@
 #include "PS_pack.h"
 #include "PES_packet.h"
 
-int decode();
+int stripivtv();
 
-static const char* shortOpts = "i:l:v";
+static const char* shortOpts = "i:o:l:v";
 
 static struct option longOpts[] =
 {
     { "in",     required_argument,  0,  'i' },
+    { "out",    required_argument,  0,  'o' },
     { "log",    required_argument,  0,  'l' },
     { "verbose",    no_argument,    0,  'v' },
 };
@@ -27,8 +28,10 @@ usage(const char* prog)
     fprintf(stderr, "Valid options are:\n\
 -i, --in input.mpg  Input MPEG2 file\n\
                     Default: stdin\n\
--l, --log logfile   Log output file\n\
+-o, --out out.mpg   Output MPEG2 file\n\
                     Default: stdout\n\
+-l, --log logfile   Log output file\n\
+                    Default: stderr\n\
 -v, --verbose       Increment verbosity\n\
                     Default: 0\n\
 ");
@@ -36,14 +39,14 @@ usage(const char* prog)
 
 int verbose = 0;
 FILE* fpin = stdin;
-FILE* fplog = stdout;
+FILE* fpout = stdout;
+FILE* fplog = stderr;
 
 int
 main(int argc, char** argv)
 {
     int c;
     int index;
-    char* logfile = 0;
 
     while ((c = getopt_long(argc, argv, shortOpts, longOpts, &index)) != -1)
     {
@@ -56,10 +59,15 @@ main(int argc, char** argv)
                     exit(1);
                 }
                 break;
+            case 'o':
+                if ((fpout = fopen(optarg, "w")) == NULL)
+                {
+                    fprintf(stderr, "Cannot open %s: %s\n", optarg, strerror(errno));
+                    exit(1);
+                }
+                break;
             case 'l':
-                unlink(optarg);
-                logfile = strdup(optarg);
-                if ((fplog = fopen(optarg, "a")) == NULL)
+                if ((fplog = fopen(optarg, "w")) == NULL)
                 {
                     fprintf(stderr, "Cannot open %s: %s\n", optarg, strerror(errno));
                     exit(1);
@@ -75,11 +83,11 @@ main(int argc, char** argv)
         }
     }
 
-    return decode();
+    return stripivtv();
 }
 
 int
-decode()
+stripivtv()
 {
     PS_pack pack;
     PES_packet pes;
@@ -90,27 +98,40 @@ decode()
         if (c == 0)
             c = decodeStartCode(fpin);
 
+        if (c == MPEG_program_end_code || c == EOF)
+        {
+            break;
+        }
+
         if (c == PS_pack_start_code)
         {
             pack.reset();
             pack.stream_id = c;
-            c = pack.decode(fpin, 1);
+            c = pack.copy(fpin, fpout);
             if (c == EOF)
                 break;
-            pack.print(fplog);
+        }
+        else if (c == private_stream_1)
+        {
+            // We need to remove the PS_pack that precedes thie PES_packet
+            if (fseeko(fpout, pack.startPos, SEEK_SET) < 0)
+            {
+                fprintf(stderr, "stripivtv: seek failed: %s\n", strerror(errno));
+                return EOF;
+            }
+            pes.reset();
+            pes.stream_id = c;
+            c = pes.decode(fpin, 0);
+            if (c == EOF)
+                break;
         }
         else if (c >= program_stream_map)
         {
             pes.reset();
             pes.stream_id = c;
-            c = pes.decode(fpin, 1);
+            c = pes.copy(fpin, fpout);
             if (c == EOF)
                 break;
-            pes.print(fplog);
-        }
-        else if (c == MPEG_program_end_code || c == EOF)
-        {
-            break;
         }
         else
         {
@@ -121,5 +142,10 @@ decode()
         }
     }
 
+    if (fclose(fpout) != 0)
+    {
+        fprintf(stderr, "Cannot close outfile: %s\n", strerror(errno));
+        return EOF;
+    }
     return 0;
 }

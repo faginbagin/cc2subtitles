@@ -1,12 +1,12 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-AC_PREREQ(2.61)
-AC_INIT([cc2subtitles], [0.5], [mythtv@hbuus.com])
+AC_PREREQ(2.63)
+AC_INIT([cc2subtitles], [0.6], [mythtv@hbuus.com])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 
 AC_CONFIG_SRCDIR([src/vbi.h])
-AC_CONFIG_HEADER([config.h])
+AC_CONFIG_HEADERS([config.h])
 
 #
 # Custom options
@@ -80,9 +80,29 @@ then
 fi
 AC_SUBST([CREATEISO])
 
+MYTHTV_SRC=/usr/src/mythtv
+SUBTITLE_PROG=mythsubtitles
+AC_ARG_WITH([mythtv-src],
+    [AS_HELP_STRING([--with-mythtv-src=ARG],
+        [mythtv source directory @<:@default=/usr/src/mythtv@:>@])
+    ],
+    [MYTHTV_SRC=$withval]
+)
+AC_MSG_CHECKING([$MYTHTV_SRC])
+if test -f "$MYTHTV_SRC/programs/mythfrontend/mythfrontend"; then
+    AC_MSG_RESULT(ok)
+else
+    AC_MSG_WARN([mythtv source is not installed and built in $MYTHTV_SRC])
+    SUBTITLE_PROG=cc2subtitles
+fi
+AC_SUBST([MYTHTV_SRC])
+AC_SUBST([SUBTITLE_PROG])
+
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
+AC_PROG_RANLIB
+AC_PROG_MAKE_SET
 
 # Checks for libraries.
 AC_CHECK_LIB([zvbi], [vbi_decoder_new])
@@ -95,6 +115,12 @@ AC_CHECK_HEADERS([libzvbi.h])
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 AC_TYPE_OFF_T
+AC_HEADER_STDBOOL
+AC_TYPE_INT64_T
+AC_TYPE_OFF_T
+AC_TYPE_UINT32_T
+AC_TYPE_UINT64_T
+AC_TYPE_UINT8_T
 
 # Checks for library functions.
 AC_FUNC_FSEEKO
@@ -103,5 +129,6 @@ AC_TYPE_SIGNAL
 AC_CHECK_FUNCS([alarm memset strdup strerror])
 
 AC_CONFIG_FILES([Makefile
+                 mythsubtitles/Makefile
                  src/Makefile])
 AC_OUTPUT

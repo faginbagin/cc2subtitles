@@ -10,6 +10,8 @@
     <menu background="myBackground.png" music="silence.ac3">
 		<!-- item holds the position of a menu item ie. recording -->
 		<item>
+			<text x="260" y="490" w="200" h="25" value="Page %page" font="2" colour="white" static="True" align="centre"/>
+			<previous filename="previous.png" x="50" y="490" w="48" h="48" mask="previous_mask.png" static="True"/>
 			<graphic filename="%thumbnail" x="50" y="40" w="133" h="120" static="True"/>
             <button x="200" y="32" w="470" h="36" filename="blank.png" mask="blank.png" static="False">
                 <textnormal x="200" y="32" w="470" h="36" value="%title" font="0" colour="white" align="left"/>
@@ -39,8 +41,6 @@
 			<text x="200" y="386" w="470" h="25" value="%recordingdate %recordingtime (%duration)" font="2" colour="white" static="True" align="left"/>
 			<text x="200" y="405" w="470" h="72" value="%description" font="2" colour="white" static="True" align="left"/>
 
-			<previous filename="previous.png" x="50" y="490" w="48" h="48" mask="previous_mask.png" static="True"/>
-			<text x="260" y="490" w="200" h="25" value="Page %page" font="2" colour="white" static="True" align="centre"/>
             <next filename="next.png" x="622" y="490" w="48" h="48" mask = "next_mask.png" static="True"/>
 
         </item>

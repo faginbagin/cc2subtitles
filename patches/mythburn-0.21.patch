@@ -1,6 +1,6 @@
 diff -Naur mythplugins-0.21.orig/mytharchive/mythburn/scripts/mythburn.py mythplugins-0.21/mytharchive/mythburn/scripts/mythburn.py
---- mythplugins-0.21.orig/mytharchive/mythburn/scripts/mythburn.py	2008-09-01 14:07:58.000000000 -0400
-+++ mythplugins-0.21/mytharchive/mythburn/scripts/mythburn.py	2009-02-04 18:43:12.000000000 -0500
+--- mythplugins-0.21.orig/mytharchive/mythburn/scripts/mythburn.py	2009-04-10 02:20:15.000000000 -0400
++++ mythplugins-0.21/mytharchive/mythburn/scripts/mythburn.py	2009-06-24 12:46:06.000000000 -0400
 @@ -147,6 +147,7 @@
  dvddrivepath = "/dev/dvd"
  
@@ -9,6 +9,15 @@ diff -Naur mythplugins-0.21.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
  docreateiso = False
  doburn = True
  erasedvdrw = False
+@@ -257,7 +258,7 @@
+     write("")
+     saveSetting("MythArchiveLastRunResult", "Failed: " + quoteString(msg));
+     saveSetting("MythArchiveLastRunEnd", time.strftime("%Y-%m-%d %H:%M:%S "))
+-    sys.exit(0)
++    sys.exit(1)
+ 
+ # ###########################################################
+ # Display a warning message
 @@ -434,6 +435,10 @@
      for root, dirs, deletefiles in os.walk(folder, topdown=False):
          for name in deletefiles:
@@ -24,7 +33,7 @@ diff -Naur mythplugins-0.21.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
  
      return chapters
  
-+def createVideoChaptersAtCommercialMarks(itemnum): 
++def createVideoChaptersAtCommercialMarks(itemnum, segment, lengthofvideo):
 +    """Returns chapters based on commercial marks
 +    if there are no commercial marks,
 +    then return fixed length chapters """
@@ -37,6 +46,7 @@ diff -Naur mythplugins-0.21.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
 +        fatalError("The info.xml file (%s) doesn't look right" % os.path.join(folder,"info.xml"))
 +
 +    type = getText(infoDOM.getElementsByTagName("type")[0])
++    last = 0.0
 +
 +    # If this is an mpeg2 myth recording fetch, commercial marks
 +    if type == "recording":
@@ -66,7 +76,6 @@ diff -Naur mythplugins-0.21.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
 +            chapters = ""
 +
 +            result = cursor.fetchall()
-+            last = 0.0
 +            for record in result:
 +                #write("mark=%d type=%d seconds=%.5f" % ( record[0], record[1], seconds))
 +                # Subtract a second so the viewer can be reasaonably confident
@@ -93,11 +102,11 @@ diff -Naur mythplugins-0.21.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
 +        del cursor
 +        db.close()
 +        del db
-+        if (count > 0):
++        if (last > segment):
 +            return chapters
 +
-+    # If there are no commercial marks, fall back to fixed length chapters
-+    return createVideoChaptersFixedLength(itemnum, chapterLength, getLengthOfVideo(itemnum))
++    # If there are no useful commercial marks, fall back to fixed length chapters
++    return createVideoChaptersFixedLength(itemnum, segment, lengthofvideo)
 +
  #############################################################
  # Reads a load of settings from DB
@@ -204,21 +213,21 @@ diff -Naur mythplugins-0.21.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
          menupgc.setAttribute("pause","inf")
  
          menupgc.appendChild( dvddom.createComment("Menu Page %s" % page) )
-@@ -3103,16 +3204,18 @@
+@@ -3103,8 +3204,11 @@
                                          getLengthOfVideo(itemnum),
                                          False))
              else:
 -                vob.setAttribute("chapters", 
 -                    createVideoChaptersFixedLength(itemnum,
--                                                   chapterLength, 
--                                                   getLengthOfVideo(itemnum)))
 +                #vob.setAttribute("chapters", 
 +                #    createVideoChaptersFixedLength(itemnum,
 +                #                                   chapterLength, 
 +                #                                   getLengthOfVideo(itemnum)))
-+                vob.setAttribute("chapters", createVideoChaptersAtCommercialMarks(itemnum))
++                vob.setAttribute("chapters", createVideoChaptersAtCommercialMarks(itemnum,
+                                                    chapterLength, 
+                                                    getLengthOfVideo(itemnum)))
  
-             vob.setAttribute("file",os.path.join(getItemTempPath(itemnum),"final.mpg"))
+@@ -3112,7 +3216,8 @@
              pgc.appendChild(vob)
  
              post = dvddom.createElement("post")
@@ -228,7 +237,7 @@ diff -Naur mythplugins-0.21.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
              pgc.appendChild(post)
  
              #Quick variable tidy up (not really required under Python)
-@@ -3131,7 +3234,7 @@
+@@ -3131,7 +3236,7 @@
                      if page>1:
                          button=dvddom.createElement("button")
                          button.setAttribute("name","previous")
@@ -237,7 +246,7 @@ diff -Naur mythplugins-0.21.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
                          endbuttons.append(button)
  
  
-@@ -3139,7 +3242,7 @@
+@@ -3139,7 +3244,7 @@
                      if itemnum < numberofitems:
                          button=dvddom.createElement("button")
                          button.setAttribute("name","next")
@@ -246,7 +255,7 @@ diff -Naur mythplugins-0.21.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
                          endbuttons.append(button)
  
                  elif node.nodeName=="playall":
-@@ -3153,6 +3256,7 @@
+@@ -3153,6 +3258,7 @@
  
          #Move on to the next page
          page+=1
@@ -254,21 +263,19 @@ diff -Naur mythplugins-0.21.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
  
          for button in endbuttons:
              menupgc.appendChild(button)
-@@ -3353,9 +3457,10 @@
+@@ -3353,7 +3459,10 @@
  
          vob = dvddom.createElement("vob")
          vob.setAttribute("file", os.path.join(getItemTempPath(itemNum), "final.mpg"))
 -        vob.setAttribute("chapters", createVideoChaptersFixedLength(itemNum,
--                                                                    chapterLength,
--                                                                    getLengthOfVideo(itemNum)))
 +        #vob.setAttribute("chapters", createVideoChaptersFixedLength(itemNum,
 +        #                                                            chapterLength,
 +        #                                                            getLengthOfVideo(itemNum)))
-+        vob.setAttribute("chapters", createVideoChaptersAtCommercialMarks(itemNum))
++        vob.setAttribute("chapters", createVideoChaptersAtCommercialMarks(itemNum,
+                                                                     chapterLength,
+                                                                     getLengthOfVideo(itemNum)))
          pgc.appendChild(vob)
- 
-         del vob
-@@ -5185,7 +5290,10 @@
+@@ -5185,7 +5294,10 @@
                          calcSyncOffset(filecount))
  
              #Now all the files are completed and ready to be burnt
@@ -280,17 +287,24 @@ diff -Naur mythplugins-0.21.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
  
              #Delete dvdauthor work files
              if debug_keeptempfiles==False:
-@@ -5276,9 +5384,11 @@
-         sys.stderr.write("Sorry, your Python is too old. Please upgrade at least to 2.3.5\n")
-         sys.exit(1)
- 
-+    # XXX hardcode scriptpath for development purposes
-+    scriptpath = "/usr/share/mythtv/mytharchive/scripts"
+@@ -5279,6 +5391,8 @@
      # figure out where this script is located
--    scriptpath = os.path.dirname(sys.argv[0])
--    scriptpath = os.path.abspath(scriptpath)
-+    #scriptpath = os.path.dirname(sys.argv[0])
-+    #scriptpath = os.path.abspath(scriptpath)
+     scriptpath = os.path.dirname(sys.argv[0])
+     scriptpath = os.path.abspath(scriptpath)
++    # XXX hardcode scriptpath for development purposes
++    # scriptpath = "/usr/share/mythtv/mytharchive/scripts"
      write("script path:" + scriptpath)
  
      # figure out where the myth share directory is located
+@@ -5445,6 +5559,11 @@
+             os.system("chmod -R a+rw-x+X %s" % defaultsettings["MythArchiveTempDir"])
+     except SystemExit:
+         write("Terminated")
++        # This exception is called when there's a premature exit
++        # But we don't exit with a non-zero exit code
++        # So we indicate a problem by removing dvdauthor.xml
++        if os.path.exists(os.path.join(getTempPath(),'dvdauthor.xml')):
++            os.remove(os.path.join(getTempPath(),'dvdauthor.xml'))
+     except:
+         write('-'*60)
+         traceback.print_exc(file=sys.stdout)
