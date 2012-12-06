@@ -1,0 +1,8 @@
+2008-02-27  Helen Buus  <mythtv@hbuus.com>
+
+	* Release 0.3.
+
+	* Added autoconf/automake based configure script.
+	* myburn is now customized with configure options.
+	* Updated documentation and added it to package.
+	* Added copyright.

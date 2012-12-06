@@ -7,7 +7,7 @@
 # to burn to DVD.
 # It assumes you have set up a mytharchive job file,
 # $MYTHARCHIVETMP/config/mydata.xml
-# This is a file that mytharchive uses to tell mythburn what recordings
+# This is a file that mytharchive uses to tell mythburn.py what recordings
 # and videos you want to burn to DVD.
 # If you've ever burned a DVD, you probably have such a file in your
 # "Myth Archive Temp Directory."
@@ -17,41 +17,35 @@
 # - creating an ISO with createiso="0"
 # - burning a DVD with doburn="0"
 # I have also added another attribute, rundvdauthor="0"
-# You won't find this in a job file created by mytharchive
+# You won't find rundvdauthor in a job file created by mytharchive
 # It is recognized by my version of mythburn.py,
 # and tells it not to execute dvdauthor.
 # That saves us some time in processing because this script will run dvdauthor
 # after adding subtitles to the final.mpg files.
-# I have included my version of mythburn.py, which is from 0.20.2.
-# TODO: provide a patch file instead.
+# I have included a patch for mythburn.py, based on 0.20.2.
 
 # If you're not comfortable editing $MYHTARCHIVETMP/config/mydata.xml by hand,
-# another option is to go ahead and use mytharchive to create the job file
-# and run mythburn, then run this script after it's done.
+# another option is to go ahead and use mytharchive to create the job file,
+# then run this script after mytharchive is done.
 # If you do, be sure to disable the options "Create ISO" and "Burn DVD"
-# in the last MythArchive screen, AND
-# be sure to comment out the call to mythburn.py below.
-# That way, at least you won't waste time running mythburn twice.
+# in the last MythArchive screen.
 
-# Regardless of whether you use this script or mytharchive to run mythburn,
-# you need to disable "Use FIFOs" in MythArchive Settings.
+# You need to disable "Use FIFOs" in MythArchive Settings.
 # MythArchive Settings are found in mythfrontend:
 # Utilities/Setup -> Setup -> Media Settings -> Archive Files Settings
 # "Use FIFOs" is the 4th option on Page 2
 # If you don't, the calls in this script to spumux to add subtitles won't work.
 # This does mean you'll use more disk space to create DVDs than you did before.
-# Let me know if that's an issue. I can probably suggest a workaround.
 
 # MYTHARCHIVETMP should be set to the value of your "Myth Archive Temp Directory."
-# You set this MythArchive Settings, page 1, first option.
-MYTHARCHIVETMP=/video/tmp
+# It is the first option on page 1 of MythArchive Settings.
+# The configure script should have set this.
+MYTHARCHIVETMP=@MYTHARCHIVETMP@
 
 # MYTHARCHIVEDIR should be set to the location where mytharchive, and other
-# mythtv plugins, are installed. Typically this is:
-MYTHARCHIVEDIR=/usr/share/mythtv/mytharchive
-# This is where I've installed my version, with a patched mythburn.py
-# and my own theme. If I've forgotten to comment it out, please do so.
-MYTHARCHIVEDIR=$HOME/build/share/mythtv/mytharchive
+# mythtv plugins, are installed.
+# The configure script should have set this.
+MYTHARCHIVEDIR=@MYTHARCHIVEDIR@
 
 # The following variable determines whether to run tweakdvdxml.py
 # tweakdvdxml.py does some postprocessing on the dvdauthor.xml script
@@ -63,10 +57,12 @@ MYTHARCHIVEDIR=$HOME/build/share/mythtv/mytharchive
 # I have only tested this script with dvdauthor.xml files created with
 # my own theme, so you probably should set this value to false.
 # FWIW, I think it will work with the Compact theme.
-RUNTWEAKDVDXML=true
+# The configure script should have set this.
+RUNTWEAKDVDXML=@RUNTWEAKDVDXML@
 
-# Change the following to the name of your DVD device
-DEVDVD=/dev/dvd1
+# The name of your dvd device.
+# The configure script should have set this.
+DEVDVD=@DEVDVD@
 
 date "+%F %T myburn[$$] begin"
 
@@ -110,10 +106,10 @@ do
     # and the file, spumux.xml, will be built with references
     # to the images and timestamps.
 
-    # Note: LD_LIBRARY_PATH is set to pick up my patched version of libzvbi
-    # More on that later. It should be OK for it to be set to a non-existant
-    # directory (but I could be wrong).
-    LD_LIBRARY_PATH=$HOME/build/lib \
+    # Note: LD_LIBRARY_PATH is set in case you have installed a
+    # patched libzvbi library with the same prefix as
+    # cc2subtitles.
+    LD_LIBRARY_PATH=@libdir@ \
         cc2subtitles -i $recording -p $dir/subs/ -x $dir/spumux.xml || \
         continue
 
