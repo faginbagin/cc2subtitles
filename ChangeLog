@@ -1,3 +1,10 @@
+2010-12-28  Helen Buus  <mythtv@hbuus.com>
+
+	* Release 0.9.
+
+	* Workaround out of whack durations on mythtranscoded file.
+	  Without workaround, fudge factor may be invalid.
+
 2010-09-15  Helen Buus  <mythtv@hbuus.com>
 
 	* Release 0.8.

@@ -124,7 +124,21 @@ processFile()
         newduration=`grep duration= $dir/streaminfo.xml | \
             sed -e 's/.*duration="//' -e 's/".*//'`
         fudgeFactor=`echo $newduration $origduration |awk '{print $1 / $2 }'`
-        [ $? != 0 ] && fudgeFactor=0 # Let mythsubtitles set default value
+        # Check for reasonable values, durations might be out of whack
+        # If unreasonable, set to 0 so mythsubtitles will set default value
+        if [ $? != 0 ]
+        then
+            date "+%F %T myburn[$$] $dir: Unreasonable durations=$newduration/$origduration fudgeFactor=$fudgeFactor"
+            fudgeFactor=0
+        elif expr $fudgeFactor \< 0.8
+        then
+            date "+%F %T myburn[$$] $dir: Unreasonable durations=$newduration/$origduration fudgeFactor=$fudgeFactor"
+            fudgeFactor=0
+        elif expr $fudgeFactor \> 1.2
+        then
+            date "+%F %T myburn[$$] $dir: Unreasonable durations=$newduration/$origduration fudgeFactor=$fudgeFactor"
+            fudgeFactor=0
+        fi
     fi
 
     mkdir -p $dir/subs
