@@ -1,0 +1,12 @@
+<!DOCTYPE mythburn>
+<mythburn>
+    <job theme="Compact" >
+        <media>
+            <file usecutlist="0" type="recording" encodingprofile="NONE" filename="1004_20080217183500.mpg" />
+            <file usecutlist="0" type="recording" encodingprofile="NONE" filename="1005_20080217184000.mpg" />
+            <file usecutlist="0" type="recording" encodingprofile="NONE" filename="1006_20080217184500.mpg" />
+            <file usecutlist="0" type="recording" encodingprofile="NONE" filename="1007_20080217185500.mpg" />
+        </media>
+        <options rundvdauthor="0" dvdrsize="4482" mediatype="0" erasedvdrw="0" createiso="0" doburn="0" savefilename="" />
+    </job>
+</mythburn>

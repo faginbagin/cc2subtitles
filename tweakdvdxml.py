@@ -1,0 +1,211 @@
+#!/usr/bin/python
+
+import os, string, sys, getopt
+import xml.dom, xml.dom.minidom
+
+# Defaults for arguments
+tmpdir = "/tmp"
+inxml = ""
+outxml = ""
+lang = ""
+verbose = False
+
+def copyAttributes(inel, outel):
+    """ Copy attributes from in element to out element """
+    for i in range(inel.attributes.length):
+        attr = inel.attributes.item(i)
+        outel.setAttribute(attr.name, attr.value)
+
+def usage(arg0):
+    print "Usage: " + arg0 + """
+    -t, --tmpdir dir    MythArchive's temp directory
+                        Default: /tmp
+    -i, --in file       Input dvdauthor.xml file
+                        Default: tmpdir/work/dvdauthor.xml
+    -o, --out file      Output dvdauthor.xml file
+                        Default: tmpdir/work/new-dvdauthor.xml
+    -l, --lang lang     Language code for audio and subtitle streams
+                        Default: first two chars from $LANG or 'en'
+    -v, --verbose       Enable verbose output
+    """
+    sys.exit(1)
+
+# process any command line options
+try:
+    opts, args = getopt.getopt(sys.argv[1:], "t:i:o:l:v", ["tmpdir=", "in=", "out=", "lang=", "verbose"])
+except getopt.GetoptError:
+    # print usage and exit
+    usage(sys.argv[0])
+
+for o, a in opts:
+    if o in ("-t", "--tmpdir"):
+        tmpdir = str(a)
+    elif o in ("-i", "--in"):
+        inxml = str(a)
+    elif o in ("-o", "--out"):
+        outxml = str(a)
+    elif o in ("-l", "--lang"):
+        lang = str(a)
+    elif o in ("-v", "--verbose"):
+        verbose = True
+    else:
+        usage(sys.argv[0])
+
+if inxml == "":
+    inxml = tmpdir + "/work/dvdauthor.xml"
+
+if outxml == "":
+    outxml = tmpdir + "/work/new-dvdauthor.xml"
+
+if lang == "":
+    lang = os.environ.get("LANG", "")
+    if lang == "":
+        lang = "en"
+    else:
+        lang = lang[0:2]
+
+if verbose:
+    print "tmpdir=" + tmpdir
+    print "in=" + inxml + " out=" + outxml
+    print "lang=" + lang
+
+# Open and check the input file
+inDOM = xml.dom.minidom.parse(inxml)
+if inDOM.documentElement.tagName != "dvdauthor":
+    print inxml + " is not a valid dvdauthor.xml file"
+    sys.exit(1)
+
+outDOM = xml.dom.minidom.parseString("<dvdauthor/>")
+
+# Copy in to out, tweaking as we go
+inDvdauthor = inDOM.documentElement
+outDvdauthor = outDOM.documentElement
+copyAttributes(inDvdauthor, outDvdauthor)
+
+if verbose:
+    print "ELEMENT_NODE=" + str(xml.dom.Node.ELEMENT_NODE)
+    print "ATTRIBUTE_NODE=" + str(xml.dom.Node.ATTRIBUTE_NODE)
+    print "TEXT_NODE=" + str(xml.dom.Node.TEXT_NODE)
+    print "CDATA_SECTION_NODE=" + str(xml.dom.Node.CDATA_SECTION_NODE)
+    print "ENTITY_NODE=" + str(xml.dom.Node.ENTITY_NODE)
+    print "PROCESSING_INSTRUCTION_NODE=" + str(xml.dom.Node.PROCESSING_INSTRUCTION_NODE)
+    print "COMMENT_NODE=" + str(xml.dom.Node.COMMENT_NODE)
+    print "DOCUMENT_NODE=" + str(xml.dom.Node.DOCUMENT_NODE)
+    print "DOCUMENT_TYPE_NODE=" + str(xml.dom.Node.DOCUMENT_TYPE_NODE)
+    print "NOTATION_NODE=" + str(xml.dom.Node.NOTATION_NODE)
+
+# Copy any comments found before the vmgm element
+
+for node in inDvdauthor.childNodes:
+    if verbose:
+        print "Found dvdauthor.nodeType=" + str(node.nodeType)
+    if node.nodeType == xml.dom.Node.TEXT_NODE:
+        pass
+    elif node.nodeType == xml.dom.Node.COMMENT_NODE:
+        outDvdauthor.appendChild(node.cloneNode(True))
+    else:
+        break
+
+# Add an empty vmgm element
+outDvdauthor.appendChild(outDOM.createElement("vmgm"))
+
+# Add a titleset
+outTitleset = outDOM.createElement("titleset")
+outDvdauthor.appendChild(outTitleset)
+
+#
+# Copy menus from vmgm to titleset
+#
+
+# There should be exactly one vmgm
+vmgm = inDvdauthor.getElementsByTagName("vmgm")[0]
+# There should be exactly one menus element in the vmgm
+menus = vmgm.getElementsByTagName("menus")[0]
+
+outMenus = outDOM.createElement("menus")
+outTitleset.appendChild(outMenus)
+# Copy attributes
+copyAttributes(menus, outMenus)
+
+firstPgc = True
+# Examine the nodes in menus
+# Copy pgcs that have vobs and other elements, like video
+# Ignore everything else
+for node in menus.childNodes:
+    if verbose:
+        print "Found menus.child.nodeType=" + str(node.nodeType)
+    if node.nodeType == xml.dom.Node.ELEMENT_NODE:
+        if node.tagName == "pgc":
+            vobs = node.getElementsByTagName("vob")
+            if vobs.length != 0:
+                clone = node.cloneNode(True)
+                if firstPgc:
+                    # Set entry attribute for menu in titleset
+                    clone.setAttribute("entry", "root")
+                    firstPgc = False
+                outMenus.appendChild(clone)
+            else:
+                print "Warning: Skipping empty pgc=" + node.toxml()
+                print "Your jump/call menu references may be off"
+        else:
+            outMenus.appendChild(node.cloneNode(True))
+    else:
+        if verbose:
+            #print "Skipping menus.child.NodeType=" + str(node.nodeType)
+            print "Skipping menus.child=" + str(node)
+
+#
+# Copy titles to titleset
+# mythburn.py creates a titleset and titles elements for each pgc (title)
+# We're going to put all pgcs in one titles element
+#
+outTitles = outDOM.createElement("titles")
+outTitleset.appendChild(outTitles)
+
+# Copy non-pgc elements from the first titles element
+titles = inDvdauthor.getElementsByTagName("titles")[0]
+for node in titles.childNodes:
+    if verbose:
+        print "Found titles.child.nodeType=" + str(node.nodeType)
+    if node.nodeType == xml.dom.Node.ELEMENT_NODE:
+        if node.tagName != "pgc":
+            clone = node.cloneNode(True)
+            outTitles.appendChild(clone)
+            if clone.tagName == "audio":
+                # make sure lang attribute is set for audio elements
+                if clone.hasAttribute("lang") == False:
+                    clone.setAttribute("lang", lang)
+
+# Add a subpicture element (assumes we've converted CCs to subtitles)
+node = outDOM.createElement("subpicture")
+node.setAttribute("lang", lang)
+outTitles.appendChild(node)
+
+#
+# Copy all the pgcs found in any titlesets,
+# Change the post element contents to play the next title
+#
+nextTitle = 2
+newPost = None  # We'll need to tweak the last pgc's post after we loop
+titlesets = inDvdauthor.getElementsByTagName("titleset")
+for titleset in titlesets:
+    pgcs = titleset.getElementsByTagName("pgc")
+    for pgc in pgcs:
+        clone = pgc.cloneNode(True)
+        outTitles.appendChild(clone)
+        # Change the post element to jump to the next title
+        post = clone.getElementsByTagName("post")[0]
+        newPost = outDOM.createElement("post")
+        newPost.appendChild(outDOM.createTextNode("jump title %d;" % nextTitle))
+        nextTitle += 1
+        clone.replaceChild(newPost, post)
+
+# The last title needs to call the menu when it's done playing
+post = newPost
+newPost = outDOM.createElement("post")
+newPost.appendChild(outDOM.createTextNode("call menu;"))
+clone.replaceChild(newPost, post)
+
+f = open(outxml, 'w')
+outDOM.writexml(f, "", " ", "\n", "UTF-8")
+f.close()
