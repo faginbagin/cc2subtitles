@@ -2,9 +2,9 @@
 <mythburntheme>
 	<!-- Example theme for MythBurn 3 recordings per page -->
 	<fonts>
-		<font size="24">FreeSansBold.ttf</font>
-		<font size="20">FreeSansBold.ttf</font>
-		<font size="16">FreeSansBold.ttf</font>
+		<font size="24">FreeSans.ttf</font>
+		<font size="20">FreeSans.ttf</font>
+		<font size="16">FreeSans.ttf</font>
 	</fonts>
 
     <menu background="myBackground.png" music="silence.ac3">
