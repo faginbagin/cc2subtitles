@@ -17,3 +17,28 @@
 moc_*.cpp
 qrc_*.cpp
 *-build-*
+Makefile
+
+# Files created by autoconf/automake/configure
+autom4te.cache/
+config.h
+config.log
+config.status
+*~
+
+# Files created by make
+stamp-h1
+mythsubtitles/mythsubtitles
+mythsubtitles/mythsubtitles.mak
+mythsubtitles/mythsubtitles.pro
+src/.deps/
+src/cc2subtitles
+src/decodempeg
+src/myburn
+src/mytranscode
+src/stripivtv
+src/tweakdvdxml.py
+
+# My stuff
+j[0-9]
+go

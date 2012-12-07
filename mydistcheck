@@ -1,0 +1,4 @@
+    #--with-dev-dvd=/dev/sr0 \
+DISTCHECK_CONFIGURE_FLAGS="--with-mytharchive-dir=/usr/share/mythtv/mytharchive \
+    --with-mytharchive-tmp=/video/tmp \
+    --prefix=$HOME/build" make distcheck

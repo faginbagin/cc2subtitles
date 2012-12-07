@@ -1,15 +1,25 @@
 diff -Naur mythplugins-0.23.orig/mytharchive/mythburn/scripts/mythburn.py mythplugins-0.23/mytharchive/mythburn/scripts/mythburn.py
---- mythplugins-0.23.orig/mytharchive/mythburn/scripts/mythburn.py	2010-09-15 03:32:56.000000000 -0400
-+++ mythplugins-0.23/mytharchive/mythburn/scripts/mythburn.py	2010-06-08 03:06:35.000000000 -0400
-@@ -147,6 +147,7 @@
+--- mythplugins-0.23.orig/mytharchive/mythburn/scripts/mythburn.py	2010-10-12 19:07:40.000000000 -0400
++++ mythplugins-0.23/mytharchive/mythburn/scripts/mythburn.py	2012-08-30 23:56:27.000000000 -0400
+@@ -43,7 +43,7 @@
+ # keep all temporary files for debugging purposes
+ # set this to True before a first run through when testing
+ # out new themes (see below)
+-debug_keeptempfiles = False
++debug_keeptempfiles = True
+ 
+ ##You can use this debug flag when testing out new themes
+ ##pick some small recordings, run them through as normal
+@@ -147,6 +147,8 @@
  dvddrivepath = "/dev/dvd"
  
  #default option settings
 +rundvdauthor = True
++lang = ""
  docreateiso = False
  doburn = True
  erasedvdrw = False
-@@ -257,7 +258,7 @@
+@@ -257,7 +259,7 @@
      write("")
      saveSetting("MythArchiveLastRunResult", "Failed: " + quoteString(msg));
      saveSetting("MythArchiveLastRunEnd", time.strftime("%Y-%m-%d %H:%M:%S "))
@@ -18,7 +28,7 @@ diff -Naur mythplugins-0.23.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
  
  # ###########################################################
  # Display a warning message
-@@ -434,6 +435,10 @@
+@@ -434,6 +436,10 @@
      for root, dirs, deletefiles in os.walk(folder, topdown=False):
          for name in deletefiles:
                  os.remove(os.path.join(root, name))
@@ -29,13 +39,49 @@ diff -Naur mythplugins-0.23.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
  
  #############################################################
  # Check to see if the user has cancelled the DVD creation process
-@@ -795,6 +800,81 @@
+@@ -454,6 +460,7 @@
+ def runCommand(command):
+     checkCancelFlag()
+ 
++    write(command)
+     result = os.system(command)
+ 
+     if os.WIFEXITED(result):
+@@ -605,15 +612,15 @@
+ # Gets the video resolution, frames per second and aspect ratio
+ # of a video file from its stream info file
+ 
+-def getVideoParams(folder):
++def getVideoParams(folder, file):
+     """Returns the video resolution, fps and aspect ratio for the video file from the streamindo.xml file"""
+ 
+     #open the XML containing information about this file
+-    infoDOM = xml.dom.minidom.parse(os.path.join(folder, 'streaminfo.xml'))
++    infoDOM = xml.dom.minidom.parse(os.path.join(folder, file))
+ 
+     #error out if its the wrong XML
+     if infoDOM.documentElement.tagName != "file":
+-        fatalError("Stream info file doesn't look right (%s)" % os.path.join(getItemTempPath(index), 'streaminfo.xml'))
++        fatalError("Stream info file doesn't look right (%s)" % os.path.join(getItemTempPath(index), file))
+     video = infoDOM.getElementsByTagName("file")[0].getElementsByTagName("streams")[0].getElementsByTagName("video")[0]
+ 
+     if video.attributes["aspectratio"].value != 'N/A':
+@@ -634,7 +641,7 @@
+         write("WARNING: frames rates do not match")
+         write("The frame rate for %s should be %s but the stream info file "
+               "report a fps of %s" % (videomode, fr, fps))
+-        fps = fr
++        #fps = fr
+ 
+     return (videores, fps, aspect_ratio)
+ 
+@@ -795,6 +802,99 @@
  
      return chapters
  
-+def createVideoChaptersAtCommercialMarks(itemnum, segment, lengthofvideo):
-+    """Returns chapters based on commercial marks
-+    if there are no commercial marks,
++def createVideoChaptersAtMarks(itemnum, segment, lengthofvideo):
++    """Returns chapters based on commercial marks or cut points
++    if there are no commercial marks or cut points,
 +    then return fixed length chapters """
 +
 +    #Get the XML containing information about this item
@@ -48,56 +94,74 @@ diff -Naur mythplugins-0.23.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
 +    type = getText(infoDOM.getElementsByTagName("type")[0])
 +    last = 0.0
 +
-+    # If this is an mpeg2 myth recording fetch, commercial marks
++    # If this is a myth recording, fetch commercial marks and cut points
 +    if type == "recording":
 +        chanid = getText(infoDOM.getElementsByTagName("chanid")[0])
 +        starttime = getText(infoDOM.getElementsByTagName("starttime")[0])
-+        starttime = time.strptime(starttime, "%Y-%m-%dT%H:%M:%S")
-+        starttime = time.strftime("%Y-%m-%d %H:%M:%S", starttime)
++        #starttime = time.strptime(starttime, "%Y-%m-%dT%H:%M:%S")
++        #starttime = time.strftime("%Y-%m-%d %H:%M:%S", starttime)
 +
 +        # connect
 +        db = getDatabaseConnection()
 +        # find the commercial marks (and bookmark) if available
 +        sqlstatement  = """SELECT mark, type FROM recordedmarkup 
 +                    WHERE chanid = '%s' AND starttime = '%s' 
-+                    AND type IN (2,4,5) ORDER BY mark""" % (chanid, starttime)
++                    AND type IN (0,1,2,4,5) ORDER BY mark""" % (chanid, starttime)
 +        #write("Fetch commercial marks sqlstatement=" + sqlstatement)
 +
 +        cursor = db.cursor()
 +        # execute SQL statement
 +        cursor.execute(sqlstatement)
 +
-+        count = 0
 +        if cursor.rowcount > 0:
++            usecutlist = (getText(infoDOM.getElementsByTagName("usecutlist")[0]) == "1" and
++                         getText(infoDOM.getElementsByTagName("hascutlist")[0]) == "yes")
 +            # We need fps to translate frame marks to seconds
-+            videores, fps, aspectratio = getVideoParams(folder)
++            videores, fps, aspectratio = getVideoParams(folder, 'streaminfo_orig.xml')
 +            fps = float(fps);
++            cutframes = 0
++            incut = False
++            startcut = 0
 +
 +            chapters = ""
 +
 +            result = cursor.fetchall()
 +            for record in result:
-+                #write("mark=%d type=%d seconds=%.5f" % ( record[0], record[1], seconds))
-+                # Subtract a second so the viewer can be reasaonably confident
-+                # that the chapter does mark a transition to/from commercials
-+                seconds = (float(record[0]) / fps) - 1.0
++                write("mark=%d type=%d cutframes=%d startcut=%d incut=%d last=%.3f" % ( record[0], record[1], cutframes, startcut, incut, last))
 +
-+                # Of course, that probably means the first one is now too small
-+                if (seconds < 0.0):
-+                    seconds = 0.0
++                if (usecutlist and record[1] == 1):
++                    # Found the start of a cut
++                    startcut = record[0]
++                    incut = True
++                elif (usecutlist and record[1] == 0 and incut):
++                    cutframes += record[0] - startcut
++                    incut = False
++                if ((usecutlist and record[1] == 1) or
++                    (not usecutlist and (record[1] == 2 or record[1] == 4 or record[1] == 5))):
 +
-+                # In case this is largely commercial free,
-+                # create chapter marks at roughly 5 minute intervals
-+                while ((seconds - last) > 600.0):
-+                    last += 300.0
-+                    chapters += ("%.3f" % last) + ","
-+                    count += 1
++                    if (usecutlist):
++                        seconds = (float(record[0] - cutframes) / fps)
++                    else:
++                        # Subtract a little so the viewer can be reasonably confident
++                        # that the chapter does mark a transition to/from commercials
++                        seconds = (float(record[0]) / fps) - 2.0
 +
-+                # Note, you don't have to format the chapters in h:mm:ss
-+                # so why bother?
-+                chapters += ("%.3f" % seconds) + ","
-+                count += 1
-+                last = seconds
++                        # Of course, that probably means the first one is now too small
++                        if (seconds < 0.0):
++                            seconds = 0.0
++
++                    # In case this is largely commercial free,
++                    # create chapter marks at roughly 5 minute intervals
++                    while ((seconds - last) > 600.0):
++                        last += 300.0
++                        chapters += ("%.3f" % last) + ","
++
++                    # Don't add chapters that are less than one minute
++                    if (seconds - last) > 60.0:
++                        # Note, you don't have to format the chapters in h:mm:ss
++                        # so why bother?
++                        chapters += ("%.3f" % seconds) + ","
++                        last = seconds
 +
 +        del cursor
 +        db.close()
@@ -111,20 +175,30 @@ diff -Naur mythplugins-0.23.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
  #############################################################
  # Reads a load of settings from DB
  
-@@ -903,6 +983,7 @@
+@@ -903,6 +1003,8 @@
  # Load the options from the options node passed in the job file
  
  def getOptions(options):
 +    global rundvdauthor
++    global lang
      global doburn
      global docreateiso
      global erasedvdrw
-@@ -913,14 +994,16 @@
+@@ -913,14 +1015,25 @@
          fatalError("Trying to read the options from the job file but none found?")
      options = options[0]
  
 +    if options.hasAttribute("rundvdauthor"):
 +        rundvdauthor = options.attributes["rundvdauthor"].value != '0'
++    if options.hasAttribute("lang"):
++        lang = options.attributes["lang"].value
++    if lang == "":
++        lang = os.environ.get("LANG", "")
++        if lang == "":
++            lang = "en"
++        else:
++            lang = lang[0:2]
++
      doburn = options.attributes["doburn"].value != '0'
      docreateiso = options.attributes["createiso"].value != '0'
      erasedvdrw = options.attributes["erasedvdrw"].value != '0'
@@ -133,12 +207,12 @@ diff -Naur mythplugins-0.23.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
  
 -    write("Options - mediatype = %d, doburn = %d, createiso = %d, erasedvdrw = %d" \
 -           % (mediatype, doburn, docreateiso, erasedvdrw))
-+    write("Options - mediatype = %d, doburn = %d, createiso = %d, erasedvdrw = %d, rundvdauthor = %d" \
-+           % (mediatype, doburn, docreateiso, erasedvdrw, rundvdauthor))
++    write("Options - mediatype = %d, doburn = %d, createiso = %d, erasedvdrw = %d, rundvdauthor = %d lang=%s" \
++           % (mediatype, doburn, docreateiso, erasedvdrw, rundvdauthor, lang))
      write("          savefilename = '%s'" % savefilename)
  
  #############################################################
-@@ -1195,7 +1278,10 @@
+@@ -1195,7 +1308,10 @@
              else:
                  yoffset = vindent
  
@@ -150,7 +224,27 @@ diff -Naur mythplugins-0.23.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
          else:
              write( "Truncated text = " + i.encode("ascii", "replace"), False)
          #Move to next line
-@@ -1482,7 +1568,7 @@
+@@ -1448,6 +1564,10 @@
+                     node.appendChild(infoDOM.createTextNode("no"))
+                     top_element.appendChild(node)
+ 
++                node = infoDOM.createElement("usecutlist")
++                node.appendChild(infoDOM.createTextNode(file.attributes["usecutlist"].value))
++                top_element.appendChild(node)
++
+                 # find the cut list end marks if available to use as chapter marks
+                 if file.attributes["usecutlist"].value == "0" and addCutlistChapters == True:
+                     cursor = db.cursor()
+@@ -1459,7 +1579,7 @@
+                     # get the resultset as a tuple
+                     result = cursor.fetchall()
+                     if cursor.rowcount > 0:
+-                        res, fps, ar = getVideoParams(folder)
++                        res, fps, ar = getVideoParams(folder, 'streaminfo.xml')
+                         chapterlist="00:00:00"
+                         #iterate through marks, adding to chapterlist
+                         for record in result:
+@@ -1482,7 +1602,7 @@
          # execute SQL statement
          cursor.execute("""SELECT progstart, stars, cutlist, category,
                                   description, subtitle, title, starttime,
@@ -159,7 +253,7 @@ diff -Naur mythplugins-0.23.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
                            FROM recorded
                            WHERE basename=%s""", basename)
          # get the resultset as a tuple
-@@ -1512,13 +1598,18 @@
+@@ -1512,13 +1632,18 @@
              top_element.appendChild(node)
  
              #date time is returned as 2005-12-19 00:15:00            
@@ -180,7 +274,148 @@ diff -Naur mythplugins-0.23.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
              top_element.appendChild(node)   
  
              node = infoDOM.createElement("subtitle")
-@@ -2856,6 +2947,8 @@
+@@ -1569,6 +1694,10 @@
+                 node.appendChild(infoDOM.createTextNode("no"))
+                 top_element.appendChild(node)
+ 
++            node = infoDOM.createElement("usecutlist")
++            node.appendChild(infoDOM.createTextNode(file.attributes["usecutlist"].value))
++            top_element.appendChild(node)
++
+             if file.attributes["usecutlist"].value == "0" and addCutlistChapters == True:
+                 # find the cut list end marks if available
+                 cursor = db.cursor()
+@@ -1581,7 +1710,7 @@
+                 # get the resultset as a tuple
+                 result = cursor.fetchall()
+                 if cursor.rowcount > 0:
+-                    res, fps, ar = getVideoParams(folder)
++                    res, fps, ar = getVideoParams(folder, 'streaminfo.xml')
+                     chapterlist="00:00:00"
+                     #iterate through marks, adding to chapterlist
+                     for record in result:
+@@ -1727,7 +1856,7 @@
+         thumbs = thumbs[0]
+         thumbs = file.getElementsByTagName("thumb")
+         thumblist = ""
+-        res, fps, ar = getVideoParams(folder)
++        res, fps, ar = getVideoParams(folder, 'streaminfo.xml')
+ 
+         for thumb in thumbs:
+             caption = thumb.attributes["caption"].value
+@@ -1898,7 +2027,7 @@
+         return result
+     else:
+         if result != 0:
+-            fatalError("mplex failed with result %d" % result)
++            nonfatalError("mplex failed with result %d" % result)
+ 
+     # run spumux to add subtitles if they exist
+     if os.path.exists(os.path.dirname(destination) + "/stream.d/spumux.xml"):
+@@ -2514,7 +2643,7 @@
+ 
+ 
+     samplerate, channels = getAudioParams(folder)
+-    videores, fps, aspectratio = getVideoParams(folder)
++    videores, fps, aspectratio = getVideoParams(folder, 'streaminfo.xml')
+ 
+     command =  path_ffmpeg[0] + " -y "
+ 
+@@ -2735,6 +2864,7 @@
+     totalaudiosize=0
+     totalmenusize=0
+ 
++    # Total up 2k blocks
+     for node in files:
+         filecount+=1
+         #Generate a temp folder name for this file
+@@ -2742,33 +2872,37 @@
+         #Process this file
+         file=os.path.join(folder,"stream.mv2")
+         #Get size of video in MBytes
+-        totalvideosize+=os.path.getsize(file) / 1024 / 1024
++        totalvideosize+=(os.path.getsize(file) + 2047) / 2048
+ 
+         #Get size of audio track 1
+         if doesFileExist(os.path.join(folder,"stream0.ac3")):
+-            totalaudiosize+=os.path.getsize(os.path.join(folder,"stream0.ac3")) / 1024 / 1024
++            totalaudiosize+=(os.path.getsize(os.path.join(folder,"stream0.ac3")) + 2047) / 2048
+         if doesFileExist(os.path.join(folder,"stream0.mp2")):
+-            totalaudiosize+=os.path.getsize(os.path.join(folder,"stream0.mp2")) / 1024 / 1024
++            totalaudiosize+=(os.path.getsize(os.path.join(folder,"stream0.mp2")) + 2047) / 2048
+ 
+         #Get size of audio track 2 if available 
+         if doesFileExist(os.path.join(folder,"stream1.ac3")):
+-            totalaudiosize+=os.path.getsize(os.path.join(folder,"stream1.ac3")) / 1024 / 1024
++            totalaudiosize+=(os.path.getsize(os.path.join(folder,"stream1.ac3")) + 2047) / 2048
+         if doesFileExist(os.path.join(folder,"stream1.mp2")):
+-            totalaudiosize+=os.path.getsize(os.path.join(folder,"stream1.mp2")) / 1024 / 1024
++            totalaudiosize+=(os.path.getsize(os.path.join(folder,"stream1.mp2")) + 2047) / 2048
+ 
+         # add chapter menu if available
+         if doesFileExist(os.path.join(getTempPath(),"chaptermenu-%s.mpg" % filecount)):
+-            totalmenusize+=os.path.getsize(os.path.join(getTempPath(),"chaptermenu-%s.mpg" % filecount)) / 1024 / 1024
++            totalmenusize+=(os.path.getsize(os.path.join(getTempPath(),"chaptermenu-%s.mpg" % filecount)) + 2047) / 2048
+ 
+         # add details page if available
+         if doesFileExist(os.path.join(getTempPath(),"details-%s.mpg" % filecount)):
+-            totalmenusize+=os.path.getsize(os.path.join(getTempPath(),"details-%s.mpg" % filecount)) / 1024 / 1024
++            totalmenusize+=(os.path.getsize(os.path.join(getTempPath(),"details-%s.mpg" % filecount)) + 2047) / 2048
+ 
+     filecount=1
+     while doesFileExist(os.path.join(getTempPath(),"menu-%s.mpg" % filecount)):
+-        totalmenusize+=os.path.getsize(os.path.join(getTempPath(),"menu-%s.mpg" % filecount)) / 1024 / 1024
++        totalmenusize+=(os.path.getsize(os.path.join(getTempPath(),"menu-%s.mpg" % filecount)) + 2047) / 2048
+         filecount+=1
+ 
++    # Convert 2k blocks to Mbytes
++    totalvideosize = (totalvideosize + 511) / 512
++    totalaudiosize = (totalaudiosize + 511) / 512
++    totalmenusize = (totalmenusize + 511) / 512
+     return totalvideosize,totalaudiosize,totalmenusize
+ 
+ #############################################################
+@@ -2788,7 +2922,7 @@
+     dvdrsize-=totalmenusize
+ 
+     #Add a little bit for the multiplexing stream data
+-    totalvideosize=totalvideosize*1.08
++    totalvideosize=totalvideosize*1.04
+ 
+     if dvdrsize<0:
+         fatalError("Audio and menu files are greater than the size of a recordable DVD disk.  Giving up!")
+@@ -2803,7 +2937,9 @@
+ 
+         #tcrequant (transcode) is an optional install so may not be available
+         if path_tcrequant[0] == "":
+-            fatalError("tcrequant is not available to resize the files.  Giving up!")
++            #fatalError("tcrequant is not available to resize the files.  Giving up!")
++            write("WARNING: tcrequant is not available to resize the files.")
++            return
+ 
+         filecount=0
+         for node in files:
+@@ -2813,7 +2949,7 @@
+             os.rename(os.path.join(getItemTempPath(filecount),"video.small.m2v"),os.path.join(getItemTempPath(filecount),"stream.mv2"))
+ 
+         totalvideosize,totalaudiosize,totalmenusize=calculateFileSizes(files)
+-        write( "Total DVD size AFTER TCREQUANT is %s MBytes" % (totalaudiosize + totalmenusize + (totalvideosize*1.05)))
++        write( "Total DVD size AFTER TCREQUANT is %s MBytes" % (totalaudiosize + totalmenusize + (totalvideosize*1.04)))
+ 
+     else:
+         dvdrsize-=totalvideosize
+@@ -2836,7 +2972,9 @@
+     #Total number of video items on a single menu page (no less than 1!)
+     itemsperpage = menuitems.length
+     write( "Menu items per page %s" % itemsperpage)
+-    autoplaymenu = 2 + ((numberofitems + itemsperpage - 1)/itemsperpage)
++    autoplaymenu = 1 + ((numberofitems + itemsperpage - 1)/itemsperpage)
++    if wantIntro:
++        autoplaymenu += 1
+ 
+     if wantChapterMenu:
+         #Get the chapter menu node (we must only have 1)
+@@ -2856,6 +2994,8 @@
  
      #Page number counter
      page=1
@@ -189,7 +424,32 @@ diff -Naur mythplugins-0.23.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
  
      #Item counter to indicate current video item
      itemnum=1
-@@ -2927,13 +3020,21 @@
+@@ -2869,6 +3009,7 @@
+                 <pgc entry="title">
+                 </pgc>
+                 </menus>
++                <fpc>g2=1;jump vmgm menu 1;</fpc>
+                 </vmgm>
+                 </dvdauthor>''')
+ 
+@@ -2886,8 +3027,6 @@
+     """), dvdauthor_element.firstChild )
+     dvdauthor_element.insertBefore(dvddom.createComment("dvdauthor XML file created by MythBurn script"), dvdauthor_element.firstChild )
+ 
+-    menus_element.appendChild( dvddom.createComment("Title menu used to hold intro movie") )
+-
+     dvdauthor_element.setAttribute("dest",os.path.join(getTempPath(),"dvd"))
+ 
+     video = dvddom.createElement("video")
+@@ -2905,6 +3044,7 @@
+     pgc=menus_element.childNodes[1]
+ 
+     if wantIntro:
++        menus_element.appendChild( dvddom.createComment("Title menu used to hold intro movie") )
+         #code to skip over intro if its already played
+         pre = dvddom.createElement("pre")
+         pgc.appendChild(pre)
+@@ -2927,13 +3067,21 @@
          post .appendChild(dvddom.createTextNode("{g3=1;g2=1;jump menu 2;}"))
          pgc.appendChild(post)
          del post
@@ -213,7 +473,99 @@ diff -Naur mythplugins-0.23.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
          menupgc.setAttribute("pause","inf")
  
          menupgc.appendChild( dvddom.createComment("Menu Page %s" % page) )
-@@ -3109,8 +3210,11 @@
+@@ -2976,7 +3124,7 @@
+             #Add this recording to this page's menu...
+             button=dvddom.createElement("button")
+             button.setAttribute("name","%s" % itemnum)
+-            button.appendChild(dvddom.createTextNode("{g2=" + "%s" % itemsonthispage + "; g5=0; jump title %s;}" % itemnum))
++            button.appendChild(dvddom.createTextNode("{g2=" + "%s" % itemsonthispage + "; g5=" + "%s" % (itemnum+1) + "; jump title %s;}" % itemnum))
+             menupgc.appendChild(button)
+             del button
+ 
+@@ -2991,26 +3139,26 @@
+             menus= dvddom.createElement("menus")
+             titleset.appendChild(menus)
+ 
+-            video = dvddom.createElement("video")
+-            video.setAttribute("format",videomode)
++            if wantChapterMenu:
++                video = dvddom.createElement("video")
++                video.setAttribute("format",videomode)
+ 
+-            # set the right aspect ratio
+-            if chaptermenuAspectRatio == "4:3":
+-                video.setAttribute("aspect", "4:3")
+-            elif chaptermenuAspectRatio == "16:9":
+-                video.setAttribute("aspect", "16:9")
+-                video.setAttribute("widescreen", "nopanscan")
+-            else: 
+-                # use same aspect ratio as the video
+-                if getAspectRatioOfVideo(itemnum) > aspectRatioThreshold:
++                # set the right aspect ratio
++                if chaptermenuAspectRatio == "4:3":
++                    video.setAttribute("aspect", "4:3")
++                elif chaptermenuAspectRatio == "16:9":
+                     video.setAttribute("aspect", "16:9")
+                     video.setAttribute("widescreen", "nopanscan")
+-                else:
+-                    video.setAttribute("aspect", "4:3")
+-
+-            menus.appendChild(video)
++                else: 
++                    # use same aspect ratio as the video
++                    if getAspectRatioOfVideo(itemnum) > aspectRatioThreshold:
++                        video.setAttribute("aspect", "16:9")
++                        video.setAttribute("widescreen", "nopanscan")
++                    else:
++                        video.setAttribute("aspect", "4:3")
++                menus.appendChild(video)
++                del video
+ 
+-            if wantChapterMenu:
+                 mymenupgc = dvddom.createElement("pgc")
+                 menus.appendChild(mymenupgc)
+                 mymenupgc.setAttribute("pause","inf")
+@@ -3066,6 +3214,16 @@
+                     mymenupgc.appendChild(button)
+                     del button
+ 
++            else:
++                # No chapter menus
++                # Add a pgc node that allows a DVD remote's sub menu button to
++                # jump to the title menu containing this title's entry
++                mymenupgc = dvddom.createElement("pgc")
++                menus.appendChild(mymenupgc)
++                pre = dvddom.createElement("pre")
++                mymenupgc.appendChild(pre)
++                pre.appendChild(dvddom.createTextNode("g2=%s; jump vmgm menu %s;" % (itemsonthispage, menuNum)))
++
+             titles = dvddom.createElement("titles")
+             titleset.appendChild(titles)
+ 
+@@ -3081,16 +3239,19 @@
+ 
+             titles.appendChild(title_video)
+ 
++            title_audio = dvddom.createElement("audio")
++            title_audio.setAttribute("lang", lang)
+             #set right audio format
+             if doesFileExist(os.path.join(getItemTempPath(itemnum), "stream0.mp2")):
+-                title_audio = dvddom.createElement("audio")
+                 title_audio.setAttribute("format", "mp2")
+             else:
+-                title_audio = dvddom.createElement("audio")
+                 title_audio.setAttribute("format", "ac3")
+-
+             titles.appendChild(title_audio)
+ 
++            title_subtitle = dvddom.createElement("subpicture")
++            title_subtitle.setAttribute("lang", lang)
++            titles.appendChild(title_subtitle)
++
+             pgc = dvddom.createElement("pgc")
+             titles.appendChild(pgc)
+             #pgc.setAttribute("pause","inf")
+@@ -3109,8 +3270,11 @@
                                          getLengthOfVideo(itemnum),
                                          False))
              else:
@@ -223,11 +575,11 @@ diff -Naur mythplugins-0.23.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
 +                #    createVideoChaptersFixedLength(itemnum,
 +                #                                   chapterLength, 
 +                #                                   getLengthOfVideo(itemnum)))
-+                vob.setAttribute("chapters", createVideoChaptersAtCommercialMarks(itemnum,
++                vob.setAttribute("chapters", createVideoChaptersAtMarks(itemnum,
                                                     chapterLength, 
                                                     getLengthOfVideo(itemnum)))
  
-@@ -3118,7 +3222,8 @@
+@@ -3118,14 +3282,14 @@
              pgc.appendChild(vob)
  
              post = dvddom.createElement("post")
@@ -237,7 +589,14 @@ diff -Naur mythplugins-0.23.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
              pgc.appendChild(post)
  
              #Quick variable tidy up (not really required under Python)
-@@ -3137,7 +3242,7 @@
+             del titleset
+             del titles
+             del menus
+-            del video
+             del pgc
+             del vob
+             del post
+@@ -3137,7 +3301,7 @@
                      if page>1:
                          button=dvddom.createElement("button")
                          button.setAttribute("name","previous")
@@ -246,7 +605,7 @@ diff -Naur mythplugins-0.23.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
                          endbuttons.append(button)
  
  
-@@ -3145,7 +3250,7 @@
+@@ -3145,7 +3309,7 @@
                      if itemnum < numberofitems:
                          button=dvddom.createElement("button")
                          button.setAttribute("name","next")
@@ -255,7 +614,7 @@ diff -Naur mythplugins-0.23.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
                          endbuttons.append(button)
  
                  elif node.nodeName=="playall":
-@@ -3159,6 +3264,7 @@
+@@ -3159,6 +3323,7 @@
  
          #Move on to the next page
          page+=1
@@ -263,7 +622,34 @@ diff -Naur mythplugins-0.23.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
  
          for button in endbuttons:
              menupgc.appendChild(button)
-@@ -3359,7 +3465,10 @@
+@@ -3169,11 +3334,11 @@
+     menupgc.setAttribute("pause","inf")
+     menupgc.appendChild( dvddom.createComment("Autoplay hack") )
+ 
+-    dvdcode = ""
++    dvdcode = "\n"
+     while (itemnum > 1):
+         itemnum-=1
+-        dvdcode += "if (g5 eq %s) {g5 = %s; jump title %s;} " % (itemnum, itemnum + 1, itemnum)
+-    dvdcode += "g5 = 0; jump menu 1;"
++        dvdcode += "     if (g5 eq %s) {g5 = %s; jump title %s;}\n" % (itemnum, itemnum + 1, itemnum)
++    dvdcode += "     g5 = 0; jump menu 1;"
+ 
+     pre = dvddom.createElement("pre")
+     pre.appendChild(dvddom.createTextNode(dvdcode))
+@@ -3194,7 +3359,10 @@
+ 
+     #write(dvddom.toprettyxml())
+     #Save xml to file
+-    WriteXMLToFile (dvddom,os.path.join(getTempPath(),"dvdauthor.xml"))
++    #WriteXMLToFile (dvddom,os.path.join(getTempPath(),"dvdauthor.xml"))
++    f=open(os.path.join(getTempPath(),"dvdauthor.xml"), 'w')
++    dvddom.writexml(f, "", " ", "\n", "UTF-8")
++    f.close()
+ 
+     #Destroy the DOM and free memory
+     dvddom.unlink()   
+@@ -3359,7 +3527,10 @@
  
          vob = dvddom.createElement("vob")
          vob.setAttribute("file", os.path.join(getItemTempPath(itemNum), "final.mpg"))
@@ -271,11 +657,11 @@ diff -Naur mythplugins-0.23.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
 +        #vob.setAttribute("chapters", createVideoChaptersFixedLength(itemNum,
 +        #                                                            chapterLength,
 +        #                                                            getLengthOfVideo(itemNum)))
-+        vob.setAttribute("chapters", createVideoChaptersAtCommercialMarks(itemNum,
++        vob.setAttribute("chapters", createVideoChaptersAtMarks(itemNum,
                                                                      chapterLength,
                                                                      getLengthOfVideo(itemNum)))
          pgc.appendChild(vob)
-@@ -5191,7 +5300,10 @@
+@@ -5191,7 +5362,10 @@
                          calcSyncOffset(filecount))
  
              #Now all the files are completed and ready to be burnt
@@ -287,7 +673,7 @@ diff -Naur mythplugins-0.23.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
  
              #Delete dvdauthor work files
              if debug_keeptempfiles==False:
-@@ -5285,6 +5397,8 @@
+@@ -5285,6 +5459,8 @@
      # figure out where this script is located
      scriptpath = os.path.dirname(sys.argv[0])
      scriptpath = os.path.abspath(scriptpath)
@@ -296,7 +682,7 @@ diff -Naur mythplugins-0.23.orig/mytharchive/mythburn/scripts/mythburn.py mythpl
      write("script path:" + scriptpath)
  
      # figure out where the myth share directory is located
-@@ -5451,6 +5565,11 @@
+@@ -5451,6 +5627,11 @@
              os.system("chmod -R a+rw-x+X %s" % defaultsettings["MythArchiveTempDir"])
      except SystemExit:
          write("Terminated")
