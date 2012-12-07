@@ -153,6 +153,28 @@ here it is:
 </tr>
 <tr>
 <td>
+<a href="cc2subtitles-0.10.tar.gz">cc2subtitles-0.10.tar.gz
+</a></td>
+<td>
+2012-12-08
+</td>
+<td>353 KiB</td>
+<td>
+<ul>
+<li>
+Modified to work with personal 0.23 version of mythtv patched with 0.25 fixes for closed captions.
+To use this version of cc2subtitles, you probably need to compile mythtv from my
+<a href=" https://github.com/faginbagin/mythtv/tree/fixes/0.23">github repo</a>.
+<li>
+Added support for cut lists, but only for recordings made from digital inputs (e.g. ATSC or clear QAM) where CC data is embedded in the video stream. Will not work for analog recordings (e.g. NTSC).
+<li>
+Added libzvbi-0.2.33.patch which fixes compile issues and
+display of closed captions containing a mix of normal and italic text.
+</ul>
+</td>
+</tr>
+<tr>
+<td>
 <a href="cc2subtitles-0.9.tar.gz">cc2subtitles-0.9.tar.gz
 </a></td>
 <td>
@@ -255,6 +277,10 @@ This patch is not required for version 0.2.27 or later.
 <a href="#libzvbi.patch">patches/libzvbi-0.2.31.patch</a>
 <dd>
 A patch that fixes an occasional core dump.
+<dt>
+<a href="#libzvbi.patch">patches/libzvbi-0.2.33.patch</a>
+<dd>
+A patch that fixes compile/link errors on mythbuntu 10.10 and display of italic text mixed with normal text.
 <dt>
 doc
 <dd>
@@ -1077,6 +1103,26 @@ I finally got serious about tracking it down when I upgraded to mythtv-0.21
 and needed to make more changes to cc2subtitles.
 For what it's worth, my patch has been accepted by the zvbi project,
 so it shouldn't be needed with versions after 0.2.33.
+<h3>
+patches/libzvbi-0.2.33.patch
+</h3>
+This patch addresses two issues:
+<ul>
+<li>
+Fixes compile/link errors in the Ubuntu source package for 10.10.
+More information can be found in 
+<a href="http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=602880">
+Debian bug report #602880</a>.
+<li>
+Fixes the handling of Preamble Address Codes, Tab Offsets and Mid-Row Codes
+as described in
+<i>Code of Federal Regulations (annual edition). Title 47: Telecommunication. Subpart B: Unintentional Radiators. Saturday, October 1, 2011, Section 15.119</i>
+available here:
+<a href="http://www.gpo.gov/fdsys/pkg/CFR-2011-title47-vol1/pdf/CFR-2011-title47-vol1-sec15-119.pdf">
+CFR-2011-title47-vol1-sec15-119.pdf</a>.
+The symptoms of the problems show up in closed captions containing
+a mix of normal and italic text.
+</ul>
 <hr>
 <h2>
 Closing Remarks

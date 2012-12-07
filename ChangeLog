@@ -1,4 +1,4 @@
-2012-01-24  Helen Buus  <mythtv@hbuus.com>
+2012-12-08  Helen Buus  <mythtv@hbuus.com>
 
 	* Release 0.10.
 
@@ -7,6 +7,8 @@
 	* Added support for cut lists, but only for recordings made from
           digital inputs (e.g. ATSC or clear QAM) where CC data is embedded
           in the video stream. Will not work for analog recordings (e.g. NTSC).
+        * Added libzvbi-0.2.33.patch which fixes compile issues and display of
+          closed captions containing a mix of normal and italic text.
 
 2010-12-28  Helen Buus  <mythtv@hbuus.com>
 

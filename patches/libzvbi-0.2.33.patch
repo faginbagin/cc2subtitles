@@ -1,0 +1,109 @@
+diff --git a/contrib/ntsc-cc.c b/contrib/ntsc-cc.c
+index a89a5f9..59d328c 100644
+--- a/contrib/ntsc-cc.c
++++ b/contrib/ntsc-cc.c
+@@ -34,6 +34,7 @@
+ #include <locale.h>
+ #include <sys/ioctl.h>
+ #include <sys/types.h>
++#include <sys/stat.h>           /* S_ISCHR */
+ #include <sys/time.h>
+ #ifdef HAVE_GETOPT_LONG
+ #  include <getopt.h>
+diff --git a/src/caption.c b/src/caption.c
+index 5aaba2d..ad44231 100644
+--- a/src/caption.c
++++ b/src/caption.c
+@@ -934,13 +934,21 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
+ 			set_cursor(ch, 1, row);
+ 
+ 		if (c2 & 0x10) {
++/*
++PAC is supposed to be non-destructive.
++This code erases everything from the beginning of the line to the new column position
+ 			col = ch->col;
+ 
+ 			for (i = (c2 & 14) * 2; i > 0 && col < COLUMNS - 1; i--)
+ 				ch->line[col++] = cc->transp_space[chan >> 2];
++*/
+ 
+-			if (col > ch->col)
+-				ch->col = ch->col1 = col;
++			/* What I think is correct */
++			col = (c2 & 14) * 2 + 1;
++                        // printf("PAC %d,%d ch->col=%d ch->col1=%d\n", row, col, ch->col, ch->col1);
++			if (col >= COLUMNS)
++				col = COLUMNS-1;
++                        ch->col = ch->col1 = col;
+ 
+ 			ch->attr.italic = FALSE;
+ 			ch->attr.foreground = VBI_WHITE;
+@@ -1001,6 +1009,10 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
+ 				ch->attr.italic = TRUE;
+ 				ch->attr.foreground = VBI_WHITE;
+ 			}
++			// Midrow codes advance the cursor, like displayable space
++			vbi_char c = ch->attr;
++			c.unicode = 0x20;
++			put_char(cc, ch, c);
+ 		}
+ 
+ 		return;
+@@ -1187,11 +1199,19 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
+ 		switch (c2) {
+ 		case 0x21 ... 0x23:	/* Misc Control Codes, Tabs	001 c111  010 00xx */
+ // not verified
++/*
++Tab offsets should be non-destructive
+ 			col = ch->col;
+ 
+ 			for (i = c2 & 3; i > 0 && col < COLUMNS - 1; i--)
+ 				ch->line[col++] = cc->transp_space[chan >> 2];
++*/
+ 
++			/* What I think is correct */
++                        // printf("TO %d ch->col=%d ch->col1=%d\n", (c2 & 3), ch->col, ch->col1);
++			col = ch->col + (c2 & 3);
++			if (col >= COLUMNS)
++				col = COLUMNS-1;
+ 			if (col > ch->col)
+ 				ch->col = ch->col1 = col;
+ 
+diff --git a/src/exp-txt.c b/src/exp-txt.c
+index 58937b4..3394254 100644
+--- a/src/exp-txt.c
++++ b/src/exp-txt.c
+@@ -355,7 +355,7 @@ vbi_print_page_region(vbi_page *pg, char *buf, int size,
+ 
+ 	rtl = rtl;
+ 
+-	if (1)
++	if (0)
+ 		fprintf (stderr, "vbi_print_page_region '%s' "
+ 		         "table=%d col=%d row=%d width=%d height=%d\n",
+ 			 format, table, column, row, width, height);
+diff --git a/src/io-dvb.c b/src/io-dvb.c
+index bc5d634..2884778 100644
+--- a/src/io-dvb.c
++++ b/src/io-dvb.c
+@@ -29,6 +29,8 @@
+ #include <errno.h>
+ #include <sys/select.h>
+ #include <sys/ioctl.h>
++#include <sys/types.h>
++#include <sys/stat.h>
+ 
+ #ifndef HAVE_S64_U64
+   /* Linux 2.6.x asm/types.h defines __s64 and __u64 only
+diff --git a/src/io-v4l.c b/src/io-v4l.c
+index 9f81c76..403a49b 100644
+--- a/src/io-v4l.c
++++ b/src/io-v4l.c
+@@ -42,6 +42,7 @@ static const char rcsid [] =
+ #include <assert.h>
+ #include <sys/time.h>		/* timeval */
+ #include <sys/types.h>		/* fd_set, uid_t */
++#include <sys/stat.h>           /* S_ISCHR */
+ #include <sys/ioctl.h>		/* for (_)videodev.h */
+ #include <pthread.h>
+ 

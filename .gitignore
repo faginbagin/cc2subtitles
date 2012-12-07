@@ -42,3 +42,4 @@ src/tweakdvdxml.py
 # My stuff
 j[0-9]
 go
+.*.swp
