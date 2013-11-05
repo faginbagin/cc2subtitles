@@ -150,7 +150,7 @@ else
     fi
 fi
 
-    mkdir -p $dir/subs
+    # mkdir -p $dir/subs
 
     date "+%F %T myburn[$$] $dir: Checking `basename $recording` for CC/Teletext fudgeFactor=$fudgeFactor"
 
@@ -162,8 +162,9 @@ fi
     # Note: LD_LIBRARY_PATH is set in case you have installed a
     # patched libzvbi library with the same prefix as
     # cc2subtitles.
-    LD_LIBRARY_PATH=@libdir@ \
-        @SUBTITLE_PROG@ -i $recording -p $dir/subs/ -x $dir/spumux.xml -f $fudgeFactor || \
+    # LD_LIBRARY_PATH=@libdir@ \
+    #    @SUBTITLE_PROG@ -i $recording -p $dir/subs/ -x $dir/spumux.xml -f $fudgeFactor || \
+    ccextractor -out=spupng -o $dir/newfile.xml $recording || \
         return
 
     # the final.mpg built by mythburn is renamed to final_orig.mpg
@@ -181,7 +182,8 @@ fi
     # Let spumux (a dvdauthor tool) convert the .png images into subtitles
     # and add them to the final.mpg file.
     (
-        if spumux $dir/spumux.xml < $infile > $outfile
+        # if spumux $dir/spumux.xml < $infile > $outfile
+        if spumux $dir/newfile.xml < $infile > $outfile
         then
             date "+%F %T myburn[$$] $dir: Finished CC/Teletext processing"
         else
