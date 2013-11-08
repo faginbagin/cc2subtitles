@@ -2,10 +2,11 @@
 #define DECODER_H
 
 extern "C" {
-#include "avformat.h"
+#include "libavformat/avformat.h"
 }
 
 extern int verbose;
+extern int alternate;
 extern const char* infile;
 extern FILE* fplog;
 extern double fudgeFactor;

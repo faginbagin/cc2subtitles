@@ -23,9 +23,6 @@ class MpegDecoder : public Decoder
         AVPacket pkt;
 
         void DecodeDTVCC(const uint8_t* buf, uint buf_size, bool scte);
-        void decodeDVBCC(const uint8_t* buf, int len);
-        static void decodeDVDCC(AVCodecContext *s, const uint8_t *buf, int len);
-        void decode_cc_dvd(const uint8_t *buf, int len);
 
         vbi_sliced* sliced_buf;
         uint sliced_buf_size;

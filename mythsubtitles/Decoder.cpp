@@ -16,7 +16,7 @@ Decoder::Decoder(AVFormatContext* f)
 Decoder::~Decoder()
 {
     if (fmtCtx)
-        av_close_input_file(fmtCtx);
+        avformat_close_input(&fmtCtx);
     delete vbi;
 }
 
@@ -27,24 +27,24 @@ Decoder::GetDecoder()
     //av_log_set_level(AV_LOG_DEBUG);
 
     AVFormatContext* fmtCtx = 0;
-    AVFormatParameters params;
-    memset(&params, 0, sizeof(params));
+    //AVFormatParameters params;
+    //memset(&params, 0, sizeof(params));
 
     int ret;
-    if ((ret = av_open_input_file(&fmtCtx, infile, (AVInputFormat*)0, 0, &params))!=0)
+    if ((ret = avformat_open_input(&fmtCtx, infile, (AVInputFormat*)0, 0))!=0)
     {
-        fprintf(stderr, "%s: av_open_input_file failed: %d,%s\n", infile, ret, strerror(errno));
+        fprintf(stderr, "%s: avformat_open_input failed: %d,%s\n", infile, ret, strerror(errno));
         return 0;
     }
 
     fprintf(fplog, "Input format: %s,%s\n", fmtCtx->iformat->name,
         fmtCtx->iformat->long_name);
 
-    if (av_find_stream_info(fmtCtx)<0)
+    if (avformat_find_stream_info(fmtCtx, 0)<0)
     {
         fflush(fplog);
-        fprintf(stderr, "%s: av_find_stream_info failed\n", infile);
-        av_close_input_file(fmtCtx);
+        fprintf(stderr, "%s: avformat_find_stream_info failed\n", infile);
+        avformat_close_input(&fmtCtx);
         return 0;
     }
 
@@ -54,22 +54,22 @@ Decoder::GetDecoder()
     for (unsigned int i = 0; i < fmtCtx->nb_streams; i++)
     {
         fprintf(fplog, "stream %d: codec_type=%s codec_id=%#x,%s\n",
-            i, codec_type_string(fmtCtx->streams[i]->codec->codec_type),
+            i, ff_codec_type_string(fmtCtx->streams[i]->codec->codec_type),
             fmtCtx->streams[i]->codec->codec_id,
-            codec_id_string(fmtCtx->streams[i]->codec->codec_id));
+            ff_codec_id_string(fmtCtx->streams[i]->codec->codec_id));
         switch (fmtCtx->streams[i]->codec->codec_type)
         {
-            case CODEC_TYPE_VIDEO:
+            case AVMEDIA_TYPE_VIDEO:
                 if (videoStream < 0)
                     videoStream = i;
                 break;
-            case CODEC_TYPE_AUDIO:
+            case AVMEDIA_TYPE_AUDIO:
                 if (audioStream < 0)
                     audioStream = i;
                 break;
-            case CODEC_TYPE_DATA:
+            case AVMEDIA_TYPE_DATA:
                 // Check for ivtv VBI data
-                if (ivtvStream < 0 && fmtCtx->streams[i]->codec->codec_id == CODEC_ID_MPEG2VBI)
+                if (ivtvStream < 0 && fmtCtx->streams[i]->codec->codec_id == AV_CODEC_ID_MPEG2VBI)
                     ivtvStream = i;
                 break;
         }
@@ -88,7 +88,7 @@ Decoder::GetDecoder()
 
     fflush(fplog);
     fprintf(stderr, "%s: Unsupported media format: %s\n", infile, fmtCtx->iformat->name);
-    av_close_input_file(fmtCtx);
+    avformat_close_input(&fmtCtx);
     return 0;
 }
 

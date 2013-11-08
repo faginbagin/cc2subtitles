@@ -4217,7 +4217,7 @@ fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking $MYTHTV_SRC" >&5
 $as_echo_n "checking $MYTHTV_SRC... " >&6; }
-if test -f "$MYTHTV_SRC/programs/mythfrontend/mythfrontend"; then
+if test -f "$MYTHTV_SRC/external/FFmpeg/libavcodec/libmythavcodec.so"; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: ok" >&5
 $as_echo "ok" >&6; }
 else

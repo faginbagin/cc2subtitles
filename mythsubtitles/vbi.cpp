@@ -23,6 +23,12 @@ VBIDecoder::VBIDecoder()
     char* errstr = 0;
     firstTimestamp.base = 0;
     currTimestamp.base = 0;
+
+    if (verbose > 1)
+    {
+        vbi_set_log_fn((vbi_log_mask)-1 /* log everything */, vbi_log_on_stderr, 0);
+    }
+
     decoder = vbi_decoder_new();
     decoderTimestamp = 0.0;
     exporter = vbi_export_new("png", &errstr);
@@ -104,7 +110,9 @@ VBIDecoder::decode(vbi_sliced* sliced, int nslice)
     // to ignore valid data just because the timestamps provided by
     // the ivtv driver don't quite match its expectations.
     decoderTimestamp += 0.03;
+    fflush(fplog);
     vbi_decode(decoder, sliced, nslice, decoderTimestamp);
+    fflush(stderr);
 }
 
 void
