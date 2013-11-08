@@ -3,12 +3,24 @@
 
 #include <stdio.h>
 #include <qstring.h>
+
+//#include <cmath>
+#include <vector>
+using namespace std;
+
 #include "libzvbi.h"
-
 #include "format.h"
-#include "osdtypes.h"
-
 #include "Decoder.h"
+
+class ccText
+{
+  public:
+    QString text;
+    int x;
+    int y;
+    int color;
+    bool teletextmode;
+};
 
 class NuvDecoder : public Decoder
 {

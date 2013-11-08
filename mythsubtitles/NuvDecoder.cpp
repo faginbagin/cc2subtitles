@@ -18,7 +18,7 @@ NuvDecoder::NuvDecoder(AVFormatContext* f, int vStream)
     : Decoder(f)
 {
     videoStream = vStream;
-    av_close_input_file(fmtCtx);
+    avformat_close_input(&fmtCtx);
     fmtCtx = 0;
     fp = 0;
     buf = new unsigned char[1024];

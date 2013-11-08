@@ -1,6 +1,6 @@
-    #--with-mythtv-src=$HOME/src/mythtv \
     #--with-dev-dvd=/dev/sr0 \
 ./configure \
+    --with-mythtv-src=$HOME/git/mythtv/mythtv \
     --with-mytharchive-tmp=/video/tmp \
     --enable-use-fifos=no \
     --prefix=$HOME/usr

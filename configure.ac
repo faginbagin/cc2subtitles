@@ -90,7 +90,7 @@ AC_ARG_WITH([mythtv-src],
     [MYTHTV_SRC=$withval]
 )
 AC_MSG_CHECKING([$MYTHTV_SRC])
-if test -f "$MYTHTV_SRC/programs/mythfrontend/mythfrontend"; then
+if test -f "$MYTHTV_SRC/external/FFmpeg/libavcodec/libmythavcodec.so"; then
     AC_MSG_RESULT(ok)
 else
     AC_MSG_WARN([mythtv source is not installed and built in $MYTHTV_SRC])

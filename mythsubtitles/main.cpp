@@ -10,13 +10,14 @@
 
 extern int decode();
 
-static const char* shortOpts = "i:l:vp:P:x:f:";
+static const char* shortOpts = "i:l:vap:P:x:f:";
 
 static struct option longOpts[] =
 {
     { "in",     required_argument,  0,  'i' },
     { "log",    required_argument,  0,  'l' },
     { "verbose",    no_argument,    0,  'v' },
+    { "alternate",  no_argument,    0,  'a' },
     { "prefix", required_argument,  0,  'p' },
     { "page",   required_argument,  0,  'P' },
     { "xml",    required_argument,  0,  'x' },
@@ -35,6 +36,8 @@ usage(const char* prog)
 -l, --log logfile   Log output file\n\
                     Default: stdout\n\
 -v, --verbose       Increment verbosity\n\
+                    Default: 0\n\
+-a, --alternate     Alternate fields (needed for some dvd videos)\n\
                     Default: 0\n\
 -p, --prefix prefix Prefix to subtitle image file names\n\
                     If prefix is a directory, you must provide a trailing slash\n\
@@ -60,6 +63,7 @@ usage(const char* prog)
 }
 
 int verbose = 0;
+int alternate = 0;
 const char* infile = 0;
 FILE* fplog = stdout;
 const char* xmlfile = "spumux.xml";
@@ -97,6 +101,9 @@ main(int argc, char** argv)
                 break;
             case 'v':
                 verbose++;
+                break;
+            case 'a':
+                alternate++;
                 break;
             case 'p':
                 prefix = strdup(optarg);

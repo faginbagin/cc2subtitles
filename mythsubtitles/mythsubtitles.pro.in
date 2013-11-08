@@ -15,16 +15,14 @@ SOURCES += Decoder.cpp IvtvDecoder.cpp MpegDecoder.cpp NuvDecoder.cpp
 SOURCES += vbi.cpp
 
 INCLUDEPATH += $${MYTHTV_SRC}/libs
-INCLUDEPATH += $${MYTHTV_SRC}/libs/libavcodec
-INCLUDEPATH += $${MYTHTV_SRC}/libs/libavutil
-INCLUDEPATH += $${MYTHTV_SRC}/libs/libavformat
+INCLUDEPATH += $${MYTHTV_SRC}/external/FFmpeg
 INCLUDEPATH += $${MYTHTV_SRC}/libs/libmythtv
 INCLUDEPATH += $${MYTHTV_SRC}/libs/libmythdb
 
-LIBS += -L$${MYTHTV_SRC}/libs/libavformat
-LIBS += -lmythavformat-$$LIBVERSION
-LIBS += -L$${MYTHTV_SRC}/libs/libavutil
-LIBS += -lmythavutil-$$LIBVERSION
-LIBS += -L$${MYTHTV_SRC}/libs/libavcodec
-LIBS += -lmythavcodec-$$LIBVERSION
+LIBS += -L$${MYTHTV_SRC}/external/FFmpeg/libavformat
+LIBS += -lmythavformat
+LIBS += -L$${MYTHTV_SRC}/external/FFmpeg/libavutil
+LIBS += -lmythavutil
+LIBS += -L$${MYTHTV_SRC}/external/FFmpeg/libavcodec
+LIBS += -lmythavcodec
 LIBS += -lzvbi
