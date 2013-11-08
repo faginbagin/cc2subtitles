@@ -19,8 +19,22 @@ qrc_*.cpp
 *-build-*
 Makefile
 
-# Files created by autoconf/automake/configure
+# Files created by GNU autotools
+# If commented out, we need to provide them in source tarball
+# Files created by aclocal
 autom4te.cache/
+#aclocal.m4
+# Files created by autoheader
+#config.h.in
+# Files created by automake
+#ar-lib
+#depcomp
+#install-sh
+#missing
+#Makefile.in
+# Files created by autoconf
+#configure
+# Files created by configure
 config.h
 config.log
 config.status

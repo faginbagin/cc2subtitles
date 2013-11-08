@@ -4,6 +4,7 @@
 AC_PREREQ(2.63)
 AC_INIT([cc2subtitles], [0.10], [mythtv@hbuus.com])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
+AM_PROG_AR()
 
 AC_CONFIG_SRCDIR([src/vbi.h])
 AC_CONFIG_HEADERS([config.h])
@@ -52,7 +53,7 @@ AC_MSG_CHECKING([$DEVDVD])
 if test -b "$DEVDVD"; then
     AC_MSG_RESULT(ok)
 else
-    AC_MSG_ERROR([dvd device, \"$DEVDVD\", does not exist or is not a block device])
+    AC_MSG_WARN([dvd device, \"$DEVDVD\", does not exist or is not a block device])
 fi
 AC_SUBST([DEVDVD])
 
