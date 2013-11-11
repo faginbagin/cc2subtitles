@@ -2,9 +2,9 @@
 <mythburntheme>
 	<!-- Example theme for MythBurn 3 recordings per page -->
 	<fonts>
-		<font size="24">FreeSans.ttf</font>
-		<font size="20">FreeSans.ttf</font>
-		<font size="16">FreeSans.ttf</font>
+		<font size="24">FreeSansBold.ttf</font>
+		<font size="20">FreeSansBold.ttf</font>
+		<font size="16">FreeSansBold.ttf</font>
 	</fonts>
 
     <menu background="myBackground.png" music="silence.ac3">
@@ -13,9 +13,9 @@
 			<text x="260" y="490" w="200" h="25" value="Page %page" font="2" colour="white" static="True" align="centre"/>
 			<previous filename="previous.png" x="50" y="490" w="48" h="48" mask="previous_mask.png" static="True"/>
 			<graphic filename="%thumbnail" x="50" y="40" w="133" h="120" static="True"/>
-            <button x="200" y="32" w="470" h="36" filename="blank.png" mask="blank.png" static="False">
-                <textnormal x="200" y="32" w="470" h="36" value="%title" font="0" colour="white" align="left"/>
-                <textselected x="200" y="32" w="470" h="36" value="%title" font="0" colour="orange" align="left"/>
+            <button x="200" y="32" w="470" h="37" filename="blank.png" mask="blank.png" static="False">
+                <textnormal x="200" y="32" w="470" h="37" value="%title" font="0" colour="white" align="left"/>
+                <textselected x="200" y="32" w="470" h="37" value="%title" font="0" colour="orange" align="left"/>
             </button>
 			<text x="200" y="61" w="470" h="25" value="%subtitle" font="1" colour="white" static="True" align="left"/>
 			<text x="200" y="86" w="470" h="25" value="%recordingdate %recordingtime (%duration)" font="2" colour="white" static="True" align="left"/>
