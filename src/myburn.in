@@ -18,7 +18,7 @@
 # It is recognized by my version of mythburn.py,
 # and tells it not to execute dvdauthor.
 # That saves us some time in processing because this script will run dvdauthor
-# after adding subtitles to the final.mpg files.
+# after adding subtitles to the final.vob files.
 # I have included patches for mythburn.py, one for 0.20.2 and one for 0.21.
 
 # If you're not comfortable editing $MYHTARCHIVETMP/config/mydata.xml by hand,
@@ -167,20 +167,20 @@ fi
     ccextractor -out=spupng -o $dir/newfile.xml $recording || \
         return
 
-    # the final.mpg built by mythburn is renamed to final_orig.mpg
-    # and the one with subtitles will be final.mpg
+    # the final.vob built by mythburn is renamed to final_orig.vob
+    # and the one with subtitles will be final.vob
     # That's the name specified in dvdauthor.xml
-    [ ! -e $dir/final_orig.mpg ] && mv $dir/final.mpg $dir/final_orig.mpg
+    [ ! -e $dir/final_orig.vob ] && mv $dir/final.vob $dir/final_orig.vob
 
-    infile=$dir/final_orig.mpg
-    outfile=$dir/final.mpg
+    infile=$dir/final_orig.vob
+    outfile=$dir/final.vob
 
     [ "$USEFIFOS" = true ] && mkfifo $outfile
 
     date "+%F %T myburn[$$] $dir: Adding subtitles"
 
     # Let spumux (a dvdauthor tool) convert the .png images into subtitles
-    # and add them to the final.mpg file.
+    # and add them to the final.vob file.
     (
         # if spumux $dir/spumux.xml < $infile > $outfile
         if spumux $dir/newfile.xml < $infile > $outfile

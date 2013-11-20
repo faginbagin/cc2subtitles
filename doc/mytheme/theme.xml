@@ -10,38 +10,38 @@
     <menu background="myBackground.png" music="silence.ac3">
 		<!-- item holds the position of a menu item ie. recording -->
 		<item>
-			<text x="260" y="490" w="200" h="25" value="Page %page" font="2" colour="white" static="True" align="centre"/>
-			<previous filename="previous.png" x="50" y="490" w="48" h="48" mask="previous_mask.png" static="True"/>
-			<graphic filename="%thumbnail" x="50" y="40" w="133" h="120" static="True"/>
-            <button x="200" y="32" w="470" h="37" filename="blank.png" mask="blank.png" static="False">
-                <textnormal x="200" y="32" w="470" h="37" value="%title" font="0" colour="white" align="left"/>
-                <textselected x="200" y="32" w="470" h="37" value="%title" font="0" colour="orange" align="left"/>
+			<text x="260" y="493" w="200" h="25" value="Page %page" font="2" colour="white" static="True" align="centre"/>
+			<previous filename="previous.png" x="50" y="493" w="48" h="48" mask="previous_mask.png" static="True"/>
+			<graphic filename="%thumbnail" x="50" y="43" w="133" h="120" static="True"/>
+            <button x="200" y="36" w="470" h="38" filename="blank.png" mask="blank.png" static="False">
+                <textnormal x="200" y="36" w="470" h="38" value="%title" font="0" colour="white" align="left"/>
+                <textselected x="200" y="36" w="470" h="38" value="%title" font="0" colour="orange" align="left"/>
             </button>
-			<text x="200" y="61" w="470" h="25" value="%subtitle" font="1" colour="white" static="True" align="left"/>
-			<text x="200" y="86" w="470" h="25" value="%recordingdate %recordingtime (%duration)" font="2" colour="white" static="True" align="left"/>
-			<text x="200" y="105" w="470" h="72" value="%description" font="2" colour="white" static="True" align="left"/>
+			<text x="200" y="64" w="470" h="25" value="%subtitle" font="1" colour="white" static="True" align="left"/>
+			<text x="200" y="89" w="470" h="25" value="%recordingdate %recordingtime (%duration)" font="2" colour="white" static="True" align="left"/>
+			<text x="200" y="108" w="470" h="72" value="%description" font="2" colour="white" static="True" align="left"/>
         </item>
 		<item>
-			<graphic filename="%thumbnail" x="50" y="190" w="133" h="120" static="True" align="left"/>
-            <button x="200" y="182" w="470" h="36" filename="blank.png" mask="blank.png" static="False">
-                <textnormal x="200" y="182" w="470" h="36" value="%title" font="0" colour="white" align="left"/>
-                <textselected x="200" y="182" w="470" h="36" value="%title" font="0" colour="orange" align="left"/>
+			<graphic filename="%thumbnail" x="50" y="193" w="133" h="120" static="True" align="left"/>
+            <button x="200" y="185" w="470" h="38" filename="blank.png" mask="blank.png" static="False">
+                <textnormal x="200" y="185" w="470" h="38" value="%title" font="0" colour="white" align="left"/>
+                <textselected x="200" y="185" w="470" h="38" value="%title" font="0" colour="orange" align="left"/>
             </button>
-			<text x="200" y="211" w="470" h="25" value="%subtitle" font="1" colour="white" static="True" align="left"/>
-			<text x="200" y="236" w="470" h="25" value="%recordingdate %recordingtime (%duration)" font="2" colour="white" static="True" align="left"/>
-			<text x="200" y="255" w="470" h="72" value="%description" font="2" colour="white" static="True" align="left"/>
+			<text x="200" y="214" w="470" h="25" value="%subtitle" font="1" colour="white" static="True" align="left"/>
+			<text x="200" y="239" w="470" h="25" value="%recordingdate %recordingtime (%duration)" font="2" colour="white" static="True" align="left"/>
+			<text x="200" y="258" w="470" h="72" value="%description" font="2" colour="white" static="True" align="left"/>
         </item>
 		<item>
-			<graphic filename="%thumbnail" x="50" y="340" w="133" h="120" static="True"/>
-            <button x="200" y="332" w="470" h="36" filename="blank.png" mask="blank.png" static="False">
-                <textnormal x="200" y="332" w="470" h="36" value="%title" font="0" colour="white" align="left"/>
-                <textselected x="200" y="332" w="470" h="36" value="%title" font="0" colour="orange" align="left"/>
+			<graphic filename="%thumbnail" x="50" y="343" w="133" h="120" static="True"/>
+            <button x="200" y="334" w="470" h="38" filename="blank.png" mask="blank.png" static="False">
+                <textnormal x="200" y="334" w="470" h="38" value="%title" font="0" colour="white" align="left"/>
+                <textselected x="200" y="334" w="470" h="38" value="%title" font="0" colour="orange" align="left"/>
             </button>
-			<text x="200" y="361" w="470" h="25" value="%subtitle" font="1" colour="white" static="True" align="left"/>
-			<text x="200" y="386" w="470" h="25" value="%recordingdate %recordingtime (%duration)" font="2" colour="white" static="True" align="left"/>
-			<text x="200" y="405" w="470" h="72" value="%description" font="2" colour="white" static="True" align="left"/>
+			<text x="200" y="364" w="470" h="25" value="%subtitle" font="1" colour="white" static="True" align="left"/>
+			<text x="200" y="389" w="470" h="25" value="%recordingdate %recordingtime (%duration)" font="2" colour="white" static="True" align="left"/>
+			<text x="200" y="408" w="470" h="72" value="%description" font="2" colour="white" static="True" align="left"/>
 
-            <next filename="next.png" x="622" y="490" w="48" h="48" mask = "next_mask.png" static="True"/>
+            <next filename="next.png" x="622" y="493" w="48" h="48" mask = "next_mask.png" static="True"/>
 
         </item>
 	</menu>
