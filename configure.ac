@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.63)
-AC_INIT([cc2subtitles], [0.10], [mythtv@hbuus.com])
+AC_INIT([cc2subtitles], [0.27.11], [mythtv@hbuus.com])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AM_PROG_AR()
 
